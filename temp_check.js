@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Wallet, TrendingUp, Shield, Cpu, Activity, DollarSign, 
   LayoutDashboard, Home, ArrowUpRight, ArrowDownLeft, 
-  Settings, LogOut, PieChart, Clock, Zap, X, Copy, Download, TrendingDown,
+  Settings, LogOut, PieChart, BarChart3, Clock, Zap, X, Copy, Download, TrendingDown,
   ChevronLeft, ChevronRight, AlertTriangle
 } from 'lucide-react';
 import { metaApiService } from './services/metaApi';
 
 // --- Shared Components ---
 const TelegramSection = () => (
-  <section className="container mx-auto px-6 py-20 md:py-32 relative overflow-hidden">
+  <section className="container mx-auto px-6 py-32 relative overflow-hidden">
     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-blue-600/[0.03] blur-[120px] rounded-full -z-10"></div>
     
     <motion.div 
@@ -37,12 +37,12 @@ const TelegramSection = () => (
           FlexBot AI <span className="text-gray-500">Community</span>
         </h2>
         <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-12 font-medium leading-relaxed">
-          Connect with <span className="text-white">fellow protocol users</span>. Get real-time updates, verified results, and exclusive insights directly from our neural core developers.
+          Connect with <span className="text-white">5,000+ protocol users</span>. Get real-time updates, verified results, and exclusive insights directly from our neural core developers.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-6">
           <a 
-            href="https://t.me/flexbotcommunity" 
+            href="https://t.me/yourtelegram" 
             target="_blank" 
             rel="noopener noreferrer"
             className="bg-blue-600 hover:bg-blue-500 text-white px-12 py-6 rounded-2xl font-black text-lg tracking-widest transition-all shadow-[0_10px_50px_rgba(37,99,235,0.4)] flex items-center gap-3 active:scale-95"
@@ -58,9 +58,9 @@ const TelegramSection = () => (
               ))}
             </div>
             <div className="text-left">
-              <p className="text-[10px] font-black text-white uppercase leading-none">Active Community</p>
+              <p className="text-[10px] font-black text-white uppercase leading-none">5.2k Members</p>
               <div className="text-[8px] font-bold text-green-500 uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
-                <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></div> Check inside
+                <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></div> 842 Online
               </div>
             </div>
           </div>
@@ -133,29 +133,25 @@ const FeaturesSection = () => {
       title: "Secure Bridge",
       desc: "Connect your MT4/5 account via our secure FlexBot AI bridge. We never have access to your funds.",
       icon: "secure",
-      color: "blue",
-      accent: "from-blue-600/20"
+      color: "blue"
     },
     {
       title: "FlexBot AI Core",
       desc: "The V5.0 neural network model trained specifically for XAU/USD (Gold) institutional liquidity.",
       icon: "performance",
-      color: "purple",
-      accent: "from-purple-600/20"
+      color: "blue"
     },
     {
       title: "Zero Latency",
       desc: "FlexBot AI executes trades with sub-millisecond precision, mirroring our master account instantly.",
       icon: "profit",
-      color: "green",
-      accent: "from-green-600/20"
+      color: "green"
     },
     {
       title: "AI Guardians",
       desc: "FlexBot AI monitors market volatility 24/7, automatically adjusting risk parameters for safety.",
       icon: "withdraw",
-      color: "yellow",
-      accent: "from-yellow-600/20"
+      color: "blue"
     }
   ];
 
@@ -181,7 +177,7 @@ const FeaturesSection = () => {
   };
 
   return (
-    <section className="container mx-auto px-6 py-20 md:py-32 relative">
+    <section className="container mx-auto px-6 py-32 relative">
       <motion.div 
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -209,7 +205,7 @@ const FeaturesSection = () => {
             variants={itemVariants}
             className="bg-white/[0.02] border border-white/5 p-8 rounded-[32px] hover:bg-white/[0.04] transition-all group relative overflow-hidden"
           >
-            <div className={`absolute top-0 left-0 w-full h-full bg-gradient-to-br ${f.accent} to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="mb-6 relative z-10">
               <ProfessionalIcon type={f.icon} color={f.color} />
             </div>
@@ -224,7 +220,7 @@ const FeaturesSection = () => {
 
 const PerformanceSection = () => {
   return (
-    <section className="container mx-auto px-6 py-20 md:py-32 relative">
+    <section className="container mx-auto px-6 py-32 relative">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-blue-600/[0.02] blur-[120px] rounded-full -z-10"></div>
       <motion.div 
         initial={{ opacity: 0, y: 100, scale: 0.95 }}
@@ -242,41 +238,20 @@ const PerformanceSection = () => {
               transition={{ delay: 0.4, duration: 1, ease: "easeOut" }}
             >
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/5 border border-green-500/10 text-green-500 text-[10px] font-black uppercase tracking-widest mb-8 w-fit">
-                FTMO Compliant
+                Verified Results
               </div>
-              <h2 className="text-5xl font-black tracking-tighter mb-8 uppercase">Prop Firm <span className="text-gray-500">Ready</span></h2>
-              <p className="text-gray-400 text-lg font-medium leading-relaxed mb-10">
-                FlexBot is explicitly engineered to pass and maintain strict prop firm challenges like FTMO. Our strict parameter protocol ensures absolute compliance.
+              <h2 className="text-5xl font-black tracking-tighter mb-8 uppercase">Institutional <span className="text-gray-500">Performance</span></h2>
+              <p className="text-gray-400 text-lg font-medium leading-relaxed mb-12">
+                Our Neural Nexus core has maintained a consistent track record. We focus on low drawdown and high Sharpe ratios to ensure long-term sustainability.
               </p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-[20px] transition-colors hover:bg-white/10">
-                  <PieChart size={24} className="text-blue-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-white font-black text-sm uppercase">Max Risk: 0.5%</p>
-                    <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">Per Trade Strict Limit</p>
-                  </div>
+              <div className="grid grid-cols-2 gap-8">
+                <div>
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Monthly Avg</p>
+                  <p className="text-4xl font-black text-white">+14.2%</p>
                 </div>
-                <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-[20px] transition-colors hover:bg-white/10">
-                  <Activity size={24} className="text-purple-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-white font-black text-sm uppercase">1 Trade Max</p>
-                    <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">Open At Any Time</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-[20px] transition-colors hover:bg-white/10">
-                  <Clock size={24} className="text-yellow-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-white font-black text-sm uppercase">No News Trading</p>
-                    <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">Avoids High Impact</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-[20px] transition-colors hover:bg-white/10">
-                  <Shield size={24} className="text-green-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-white font-black text-sm uppercase">Balanced Logic</p>
-                    <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">No One-Side Betting</p>
-                  </div>
+                <div>
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Max Drawdown</p>
+                  <p className="text-4xl font-black text-white">4.8%</p>
                 </div>
               </div>
             </motion.div>
@@ -286,9 +261,9 @@ const PerformanceSection = () => {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ delay: 0.6, duration: 1 }}
-            className="h-full lg:h-auto"
+            className="h-[400px] lg:h-auto"
           >
-            <ChallengeSteps />
+            <LiveTradingChart />
           </motion.div>
         </div>
       </motion.div>
@@ -310,7 +285,7 @@ const FAQSection = () => {
     },
     {
       q: "Which brokers are supported?",
-      a: "FlexBot AI works with any broker supporting MetaTrader 5. We recommend low-spread brokers for gold (XAU/USD)."
+      a: "FlexBot AI works with any broker supporting MetaTrader 4 or 5. We recommend low-spread brokers for gold (XAU/USD)."
     },
     {
       q: "What is the fixed price?",
@@ -323,7 +298,7 @@ const FAQSection = () => {
   ];
 
   return (
-    <section className="container mx-auto px-6 py-20 md:py-32 relative">
+    <section className="container mx-auto px-6 py-32 relative">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -382,8 +357,8 @@ const HowItWorks = () => {
       color: "blue"
     },
     {
-      title: "Install on MT5",
-      desc: "Deploy the FlexBot AI software on your MetaTrader 5 terminal using our 5-minute guide.",
+      title: "Install on MT4/5",
+      desc: "Deploy the FlexBot AI software on your MetaTrader terminal using our 5-minute guide.",
       icon: <Settings size={24} />,
       color: "yellow"
     },
@@ -422,7 +397,7 @@ const HowItWorks = () => {
   };
 
   return (
-    <section id="how-it-works" className="container mx-auto px-6 py-20 md:py-32 relative">
+    <section id="how-it-works" className="container mx-auto px-6 py-32 relative">
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         whileInView={{ opacity: 1, scale: 1 }}
@@ -540,12 +515,12 @@ const BackgroundEffects = () => (
 );
 
 const Logo = ({ className = "" }) => (
-  <div className={`flex items-center gap-2 md:gap-3 group cursor-pointer ${className}`}>
+  <div className={`flex items-center gap-3 group cursor-pointer ${className}`}>
     <div className="relative">
       <div className="absolute inset-[-6px] bg-white/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-      <div className="relative w-8 h-8 md:w-12 md:h-12 flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+      <div className="relative w-12 h-12 flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
         <img 
-          src="/FLEX.png" 
+          src="/FLEX_1.png" 
           alt="FlexBot AI Logo" 
           className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]"
         />
@@ -553,80 +528,58 @@ const Logo = ({ className = "" }) => (
     </div>
     <div className="flex flex-col">
       <div className="flex items-baseline">
-        <span className="text-lg md:text-xl font-black tracking-tighter text-white">FlexBot</span>
-        <span className="text-lg md:text-xl font-black tracking-tighter text-blue-500 ml-0.5 md:ml-1">AI</span>
+        <span className="text-xl font-black tracking-tighter text-white">FlexBot</span>
+        <span className="text-xl font-black tracking-tighter text-blue-500 ml-1">AI</span>
       </div>
       <div className="flex items-center gap-1">
         <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse"></div>
-        <span className="text-[6px] md:text-[7px] font-black text-blue-500/50 uppercase tracking-[0.3em] leading-none">Neural Protocol</span>
+        <span className="text-[7px] font-black text-blue-500/50 uppercase tracking-[0.3em] leading-none">Neural Protocol</span>
       </div>
     </div>
   </div>
 );
 
-const ChallengeSteps = () => (
-  <div className="w-full h-full relative bg-[#050505] p-8 md:p-12 flex flex-col justify-center overflow-hidden">
-    <div className="absolute inset-0 opacity-[0.02] pointer-events-none" 
+const LiveTradingChart = () => (
+  <div className="w-full h-full relative bg-[#050505] p-8 flex flex-col justify-between overflow-hidden">
+    <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
          style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
     </div>
-    
-    <div className="relative z-10 mb-10">
-      <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-1">Execution Plan</p>
-      <h4 className="text-3xl font-black tracking-tighter text-white uppercase">How We Pass You</h4>
+    <div className="relative z-10 flex justify-between items-start">
+      <div>
+        <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-1">Live Equity Curve</p>
+        <h4 className="text-2xl font-black tracking-tighter text-white">Cumulative Return</h4>
+      </div>
+      <div className="text-right">
+        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Current Session</p>
+        <p className="text-xl font-black text-green-500">+1.24%</p>
+      </div>
     </div>
-
-    <div className="relative z-10 flex-1 flex flex-col gap-6">
-      {/* Step 1 */}
-      <div className="flex gap-6 relative group">
-        <div className="flex flex-col items-center">
-          <div className="w-10 h-10 rounded-2xl bg-blue-600/10 border border-blue-500/30 flex items-center justify-center text-blue-400 font-black text-sm z-10 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-[0_0_20px_rgba(37,99,235,0.1)] group-hover:shadow-[0_0_20px_rgba(37,99,235,0.4)]">1</div>
-          <div className="w-px h-full bg-gradient-to-b from-blue-500/30 to-purple-500/30 mt-3 absolute top-10 bottom-[-24px]"></div>
-        </div>
-        <div className="pb-4">
-          <h5 className="text-white font-black uppercase text-sm mb-1.5 tracking-tight">Phase 1: Evaluation</h5>
-          <p className="text-gray-500 text-xs font-medium leading-relaxed">Dynamic lot sizing to safely secure the 8-10% profit target while strictly avoiding the daily drawdown limits.</p>
-        </div>
+    <div className="relative flex-1 mt-4">
+      <svg className="w-full h-full" viewBox="0 0 1000 300" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="chart-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <motion.path initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 2 }} d="M0,250 L100,230 L200,240 L300,180 L400,200 L500,140 L600,160 L720,220 L840,80 L960,160 L1080,40 L1200,100 L1320,20 L1440,60 L1000,300 L0,300 Z" fill="url(#chart-gradient)" />
+        <motion.path initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, ease: "easeInOut" }} d="M0,250 L100,230 L200,240 L300,180 L400,200 L500,140 L600,160 L720,220 L840,80 L960,160 L1080,40 L1200,100 L1320,20 L1440,60" fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" />
+      </svg>
+      <motion.div animate={{ x: ["0%", "100%", "0%"] }} transition={{ duration: 15, repeat: Infinity, ease: "linear" }} className="absolute inset-y-0 w-px bg-gradient-to-b from-transparent via-blue-500/50 to-transparent z-20" />
+    </div>
+    <div className="relative z-10 flex justify-between items-center pt-6 border-t border-white/5">
+      <div className="flex gap-12">
+        <div><p className="text-[9px] font-black text-gray-600 uppercase mb-1">Drawdown</p><p className="text-sm font-bold text-white">4.8%</p></div>
+        <div><p className="text-[9px] font-black text-gray-600 uppercase mb-1">Sharpe Ratio</p><p className="text-sm font-bold text-white">3.42</p></div>
       </div>
-
-      {/* Step 2 */}
-      <div className="flex gap-6 relative group mt-4">
-        <div className="flex flex-col items-center">
-          <div className="w-10 h-10 rounded-2xl bg-purple-600/10 border border-purple-500/30 flex items-center justify-center text-purple-400 font-black text-sm z-10 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-[0_0_20px_rgba(147,51,234,0.1)] group-hover:shadow-[0_0_20px_rgba(147,51,234,0.4)]">2</div>
-          <div className="w-px h-full bg-gradient-to-b from-purple-500/30 to-green-500/30 mt-3 absolute top-10 bottom-[-24px]"></div>
-        </div>
-        <div className="pb-4">
-          <h5 className="text-white font-black uppercase text-sm mb-1.5 tracking-tight">Phase 2: Verification</h5>
-          <p className="text-gray-500 text-xs font-medium leading-relaxed">Risk parameters are automatically halved. Pure focus on hitting the 5% target with zero stress.</p>
-        </div>
-      </div>
-
-      {/* Step 3 */}
-      <div className="flex gap-6 relative group mt-4">
-        <div className="flex flex-col items-center">
-          <div className="w-10 h-10 rounded-2xl bg-green-600/10 border border-green-500/30 flex items-center justify-center text-green-400 font-black text-sm z-10 group-hover:bg-green-600 group-hover:text-white transition-all shadow-[0_0_20px_rgba(34,197,94,0.1)] group-hover:shadow-[0_0_20px_rgba(34,197,94,0.4)]">3</div>
-        </div>
-        <div>
-          <h5 className="text-white font-black uppercase text-sm mb-1.5 tracking-tight">Funded & Payouts</h5>
-          <p className="text-gray-500 text-xs font-medium leading-relaxed">Ultra-safe mode activated. The AI trades with maximum capital preservation to generate consistent bi-weekly payouts.</p>
-        </div>
-      </div>
+      <a href="https://www.myfxbook.com/members/youraccount" target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-white/5 hover:bg-blue-600 transition-all rounded-lg text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">View Full Audit <ArrowUpRight size={12} /></a>
     </div>
   </div>
 );
 
 const ProfessionalIcon = ({ type, color = "blue" }) => {
-  const colorClass = 
-    color === "green" ? "text-green-500" : 
-    color === "purple" ? "text-purple-500" :
-    color === "yellow" ? "text-yellow-500" :
-    "text-blue-500";
-    
-  const bgClass = 
-    color === "green" ? "bg-green-500/5 border-green-500/20" : 
-    color === "purple" ? "bg-purple-500/5 border-purple-500/20" :
-    color === "yellow" ? "bg-yellow-500/5 border-yellow-500/20" :
-    "bg-blue-500/5 border-blue-500/20";
-    
+  const colorClass = color === "green" ? "text-green-500" : "text-blue-500";
+  const bgClass = color === "green" ? "bg-green-500/5 border-green-500/20" : "bg-blue-500/5 border-blue-500/20";
   const icons = {
     withdraw: <Clock size={20} className={colorClass} />,
     secure: <Shield size={20} className={colorClass} />,
@@ -642,25 +595,23 @@ const Navbar = ({ onBuyClick }) => {
   const isDashboard = location.pathname.startsWith('/dashboard');
 
   return (
-    <nav className="flex justify-between items-center px-4 md:px-8 py-4 border-b border-white/10 bg-[#050505]/80 backdrop-blur-2xl sticky top-0 z-50">
+    <nav className="flex justify-between items-center px-8 py-4 border-b border-white/10 bg-[#050505]/80 backdrop-blur-2xl sticky top-0 z-50">
       <Link to="/"><Logo /></Link>
       {!isDashboard && (
-        <div className="hidden lg:flex items-center gap-1 bg-white/5 border border-white/10 p-1.5 rounded-full backdrop-blur-xl shadow-inner">
+        <div className="hidden md:flex items-center gap-1 bg-white/5 border border-white/10 p-1.5 rounded-full backdrop-blur-xl shadow-inner">
           <a href="https://www.myfxbook.com/members/youraccount" target="_blank" rel="noopener noreferrer" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Myfxbook</a>
           <div className="w-px h-4 bg-white/10"></div>
           <Link to="/dashboard" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Terminal</Link>
           <div className="w-px h-4 bg-white/10"></div>
-          <Link to="/results" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Live Results</Link>
-          <div className="w-px h-4 bg-white/10"></div>
           <Link to="/contract" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Protocol</Link>
         </div>
       )}
-      <div className="flex items-center gap-2 md:gap-4">
-        <Link to="/dashboard" className="group relative flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600 border border-blue-500/20 hover:border-blue-400 px-3 md:px-5 py-2 md:py-2.5 rounded-full transition-all duration-300">
+      <div className="flex items-center gap-4">
+        <Link to="/dashboard" className="group relative flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600 border border-blue-500/20 hover:border-blue-400 px-5 py-2.5 rounded-full transition-all duration-300">
           <div className="flex items-center gap-2 relative z-10">
-            <LayoutDashboard size={14} className="text-blue-500 group-hover:text-white transition-colors" />
-            <span className="text-xs md:text-sm font-black tracking-widest text-white uppercase">Dashboard</span>
-            <ArrowUpRight size={12} className="hidden md:block text-blue-500 group-hover:text-white transition-all" />
+            <LayoutDashboard size={16} className="text-blue-500 group-hover:text-white transition-colors" />
+            <span className="text-sm font-black tracking-widest text-white uppercase">Dashboard</span>
+            <ArrowUpRight size={14} className="text-blue-500 group-hover:text-white transition-all" />
           </div>
         </Link>
       </div>
@@ -670,6 +621,7 @@ const Navbar = ({ onBuyClick }) => {
 
 // --- Page: Landing ---
 const LandingPage = ({ onBuyClick, tradingLogs }) => {
+  const navigate = useNavigate();
   return (
     <div className="relative">
       <header className="relative w-full min-h-[90vh] flex flex-col items-center justify-center overflow-visible">
@@ -684,54 +636,26 @@ const LandingPage = ({ onBuyClick, tradingLogs }) => {
           {/* Smooth transition gradient */}
           <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent"></div>
         </div>
-        <div className="container mx-auto px-6 pt-24 md:pt-32 pb-20 relative z-10">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-8 max-w-7xl mx-auto">
-            {/* Left Column - Text */}
-            <motion.div 
-               initial={{ opacity: 0, x: -50 }} 
-               animate={{ opacity: 1, x: 0 }} 
-               transition={{ duration: 1 }}
-               className="flex-1 text-center lg:text-left flex flex-col items-center lg:items-start"
-            >
-              <div className="inline-flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-8">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold"><div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>V5.0 NEURAL NETWORK</div>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-gray-400 text-xs font-bold uppercase tracking-widest leading-none"><Zap size={14} className="text-blue-500" />Gold Specialized</div>
-              </div>
-              
-              <h1 className="text-6xl md:text-8xl lg:text-[7.5rem] font-black mb-6 leading-[1.05] tracking-tight uppercase">Gold <br /><span className="text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">FlexBot AI</span></h1>
-              <p className="text-gray-400 text-lg md:text-xl max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed font-medium">Get the <span className="text-white font-black">Flexbot Expert Advisor</span>. Institutional-grade gold trading software copied directly to <span className="text-white font-bold">your own broker account</span>.</p>
-              
-              <div className="flex flex-col sm:flex-row gap-5 justify-center lg:justify-start w-full sm:w-auto relative">
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 sm:left-auto sm:right-[-40px] sm:translate-x-0 rotate-12 z-20">
-                  <div className="bg-blue-600 text-white text-[10px] font-black px-4 py-1.5 rounded-lg shadow-xl flex flex-col items-center border border-white/20">
-                    <span>$500 LIFETIME</span>
-                    <span className="text-[7px] mt-1 opacity-70">LIMITED SLOTS</span>
-                  </div>
+        <div className="container mx-auto px-6 pt-32 pb-20 relative z-10 text-center">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1 }}>
+            <div className="inline-flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold"><div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>V5.0 NEURAL NETWORK LIVE</div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-gray-400 text-xs font-bold uppercase tracking-widest leading-none"><Zap size={14} className="text-blue-500" />Gold Specialized</div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-gray-400 text-xs font-bold uppercase tracking-widest leading-none"><TrendingUp size={14} className="text-green-500" />+14.2% Monthly</div>
+            </div>
+            <h1 className="text-6xl md:text-9xl font-black mb-12 leading-[1.1] tracking-tight uppercase px-4">Gold <br /><span className="text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">FlexBot AI</span></h1>
+            <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-12 leading-relaxed font-medium text-balance">Get the <span className="text-white font-black">Flexbot Expert Advisor</span>. Institutional-grade gold trading software copied directly to <span className="text-white font-bold">your own broker account</span>.</p>
+            <div className="flex flex-col sm:flex-row gap-5 justify-center relative">
+              <div className="absolute -top-10 left-1/2 -translate-x-1/2 sm:left-auto sm:right-[-40px] sm:translate-x-0 rotate-12 z-20">
+                <div className="bg-blue-600 text-white text-[10px] font-black px-4 py-1.5 rounded-lg shadow-xl flex flex-col items-center border border-white/20">
+                  <span>$500 LIFETIME</span>
+                  <span className="text-[7px] mt-1 opacity-70">LIMITED SLOTS</span>
                 </div>
-                <button onClick={onBuyClick} className="bg-blue-600 hover:bg-blue-500 text-white px-10 py-5 rounded-2xl font-black text-lg transition-all shadow-[0_10px_50px_rgba(37,99,235,0.4)] hover:-translate-y-1 group flex items-center justify-center gap-3">GET FLEXBOT AI <ArrowUpRight className="group-hover:translate-x-1 transition-transform" /></button>
-                <a href="#how-it-works" className="bg-white/5 hover:bg-white/10 border border-white/10 px-10 py-5 rounded-2xl font-black text-lg transition-all backdrop-blur-md flex items-center justify-center">HOW IT WORKS</a>
               </div>
-            </motion.div>
-
-            {/* Right Column - Astronaut */}
-            <motion.div 
-               initial={{ opacity: 0, x: 50 }}
-               animate={{ opacity: 1, x: 0 }}
-               transition={{ duration: 1, delay: 0.2 }}
-               className="flex-1 relative w-full max-w-[500px] lg:max-w-[700px] flex justify-center items-center pointer-events-none mt-12 lg:mt-0"
-            >
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-blue-600/10 blur-[130px] rounded-full -z-10 animate-pulse"></div>
-               <motion.img 
-                  initial={{ y: 0 }}
-                  animate={{ y: [-20, 20, -20] }}
-                  transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                  src="/photo_2026-04-04_12-16-05.jpg" 
-                  alt="FlexBot FTMO Astronaut" 
-                  className="w-full h-auto object-contain mix-blend-lighten contrast-[1.2] opacity-100 drop-shadow-2xl"
-                  style={{ maskImage: 'radial-gradient(ellipse at center, black 45%, transparent 75%)', WebkitMaskImage: 'radial-gradient(ellipse at center, black 45%, transparent 75%)' }}
-               />
-            </motion.div>
-          </div>
+              <button onClick={onBuyClick} className="bg-blue-600 hover:bg-blue-500 text-white px-12 py-6 rounded-2xl font-black text-lg transition-all shadow-[0_10px_50px_rgba(37,99,235,0.4)] hover:-translate-y-1 group flex items-center gap-3">GET FLEXBOT AI <ArrowUpRight className="group-hover:translate-x-1 transition-transform" /></button>
+              <a href="#how-it-works" className="bg-white/5 hover:bg-white/10 border border-white/10 px-12 py-6 rounded-2xl font-black text-lg transition-all backdrop-blur-md">HOW IT WORKS</a>
+            </div>
+          </motion.div>
         </div>
       </header>
       
@@ -1006,179 +930,10 @@ const TradingViewAnalysisWidget = ({ analysis }) => {
   );
 };
 
-// --- Page: Results ---
-const ResultsPage = () => {
-  const allWeeksData = {
-    0: {
-      label: "Current Week (Mar 31 - Apr 04)",
-      days: [
-        { date: 'Apr 04, 2026', pnl: '+$482.50', perc: '+0.48%', trades: 1, win: true, dd: '-0.11%' },
-        { date: 'Apr 03, 2026', pnl: '+$1,120.00', perc: '+1.12%', trades: 1, win: true, dd: '-0.05%' },
-        { date: 'Apr 02, 2026', pnl: '-$450.00', perc: '-0.45%', trades: 1, win: false, dd: '-0.45%' },
-        { date: 'Apr 01, 2026', pnl: '+$890.20', perc: '+0.89%', trades: 1, win: true, dd: '-0.02%' },
-        { date: 'Mar 31, 2026', pnl: '+$1,250.00', perc: '+1.25%', trades: 1, win: true, dd: '-0.15%' },
-      ]
-    },
-    "-1": {
-      label: "Previous Week (Mar 24 - Mar 28)",
-      days: [
-        { date: 'Mar 27, 2026', pnl: '-$390.00', perc: '-0.39%', trades: 1, win: false, dd: '-0.39%' },
-        { date: 'Mar 26, 2026', pnl: '+$1,560.80', perc: '+1.56%', trades: 1, win: true, dd: '-0.22%' },
-        { date: 'Mar 25, 2026', pnl: '+$720.40', perc: '+0.72%', trades: 1, win: true, dd: '-0.08%' },
-        { date: 'Mar 24, 2026', pnl: '+$340.10', perc: '+0.34%', trades: 1, win: true, dd: '-0.10%' },
-      ]
-    },
-    "-2": {
-      label: "Week 3 (Mar 17 - Mar 21)",
-      days: [
-        { date: 'Mar 20, 2026', pnl: '+$880.00', perc: '+0.88%', trades: 1, win: true, dd: '-0.05%' },
-        { date: 'Mar 19, 2026', pnl: '+$520.00', perc: '+0.52%', trades: 1, win: true, dd: '-0.28%' },
-        { date: 'Mar 18, 2026', pnl: '-$210.00', perc: '-0.21%', trades: 1, win: false, dd: '-0.21%' },
-      ]
-    }
-  };
-
-  const [weekOffset, setWeekOffset] = useState(0);
-
-  const handleNextWeek = () => {
-    if (weekOffset < 0) setWeekOffset(prev => prev + 1);
-  };
-
-  const handlePrevWeek = () => {
-    if (weekOffset > -2) setWeekOffset(prev => prev - 1);
-  };
-  
-  const currentWeekInfo = allWeeksData[weekOffset];
-  const journalData = currentWeekInfo.days;
-
-  return (
-    <div className="relative min-h-screen pt-24 pb-20">
-      <div className="absolute inset-0 bg-blue-600/[0.02] pointer-events-none"></div>
-      <div className="container mx-auto px-6 relative z-10">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/5 border border-green-500/10 text-green-500 text-[10px] font-black uppercase tracking-widest mb-6">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Live MT5 Verification
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-4 text-white uppercase">Live <span className="text-gray-500">Results</span></h1>
-          <p className="text-gray-400 max-w-2xl mx-auto font-medium leading-relaxed">
-            Real-time performance tracked directly from our Master MT5 Server. Complete transparency, zero manipulation.
-          </p>
-        </div>
-
-        {/* Trading Journal */}
-        <div className="max-w-6xl mx-auto bg-white/[0.02] border border-white/[0.05] rounded-[48px] p-6 md:p-12 overflow-hidden relative shadow-2xl">
-          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-500/[0.03] blur-[150px] rounded-full -z-10 animate-pulse"></div>
-          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-green-500/[0.02] blur-[150px] rounded-full -z-10"></div>
-          
-          <div className="flex flex-col xl:flex-row items-center justify-between gap-8 mb-12 border-b border-white/5 pb-10">
-            <div className="flex items-center gap-5 w-full xl:w-auto border-b xl:border-b-0 border-white/5 pb-6 xl:pb-0">
-              <div className="w-16 h-16 rounded-3xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center shadow-[0_0_30px_rgba(37,99,235,0.2)] shrink-0">
-                <LayoutDashboard className="text-blue-500" size={32} />
-              </div>
-              <div>
-                <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter mb-1">Trading Journal</h3>
-                <p className="text-gray-400 font-medium text-xs md:text-sm">Daily MT5 Neural Core Performance</p>
-              </div>
-            </div>
-            
-            <div className="flex flex-col lg:flex-row items-center gap-6 w-full xl:w-auto">
-              {/* Pagination Controls */}
-              <div className="flex items-center gap-2 bg-white/5 border border-white/10 p-2 rounded-full w-full lg:w-auto justify-between lg:justify-center">
-                <button 
-                  onClick={handlePrevWeek} 
-                  disabled={weekOffset <= -2}
-                  className={`p-3 rounded-full transition-all ${weekOffset <= -2 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/10 hover:text-white text-gray-400'}`}
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                <div className="px-4 text-[10px] md:text-xs font-black text-white tracking-widest uppercase text-center min-w-[200px]">
-                  {currentWeekInfo.label}
-                </div>
-                <button 
-                  onClick={handleNextWeek}
-                  disabled={weekOffset >= 0}
-                  className={`p-3 rounded-full transition-all ${weekOffset >= 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/10 hover:text-white text-gray-400'}`}
-                >
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-
-              {/* Stats Block */}
-              <div className="flex items-center justify-between md:justify-center gap-8 bg-white/5 rounded-3xl p-6 border border-white/10 w-full lg:w-auto">
-                 <div>
-                   <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">30-Day Win Rate</p>
-                   <p className="text-2xl md:text-3xl font-black text-white">82.4%</p>
-                 </div>
-                 <div className="w-px h-12 bg-white/10 hidden md:block"></div>
-                 <div className="text-right md:text-left">
-                   <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Net Profit</p>
-                   <p className="text-2xl md:text-3xl font-black text-green-500">+$4,892.50</p>
-                 </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-             {/* Headers */}
-             <div className="hidden md:grid grid-cols-5 gap-4 px-6 pb-2 text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                <div>Date</div>
-                <div>Trades Taken</div>
-                <div>Net P/L ($)</div>
-                <div>Gain/Loss (%)</div>
-                <div className="text-right">Drawdown</div>
-             </div>
-             
-             {/* List */}
-             {journalData.map((day, i) => (
-               <motion.div 
-                 initial={{ opacity: 0, y: 20 }}
-                 whileInView={{ opacity: 1, y: 0 }}
-                 viewport={{ once: true }}
-                 transition={{ delay: i * 0.05 }}
-                 key={i} 
-                 className="group grid grid-cols-2 md:grid-cols-5 items-center gap-4 bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.05] hover:border-white/10 rounded-3xl p-6 md:px-8 transition-all duration-300 hover:shadow-[0_10px_40px_rgba(0,0,0,0.4)]"
-               >
-                 <div className="col-span-2 md:col-span-1 flex flex-col">
-                   <p className="text-lg font-black text-white">{day.date}</p>
-                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">London Session</p>
-                 </div>
-                 
-                 <div className="flex items-center gap-3 mt-4 md:mt-0">
-                   <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-300 font-black shadow-inner">
-                     {day.trades}
-                   </div>
-                   <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Trades</span>
-                 </div>
-                 
-                 <div>
-                   <p className={`text-2xl font-black tracking-tight ${day.win ? 'text-green-500 group-hover:drop-shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'text-red-400 group-hover:drop-shadow-[0_0_15px_rgba(248,113,113,0.4)]'} transition-all`}>{day.pnl}</p>
-                 </div>
-                 
-                 <div>
-                   <div className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-black ${day.win ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                     {day.win ? <TrendingUp size={16} /> : <TrendingDown size={16} />} {day.perc}
-                   </div>
-                 </div>
-                 
-                 <div className="col-span-2 md:col-span-1 flex md:justify-end mt-4 md:mt-0">
-                   <div className="inline-flex items-center justify-center gap-2 text-sm font-black text-gray-400 bg-white/5 border border-white/10 px-4 py-3 rounded-2xl group-hover:bg-red-500/10 group-hover:border-red-500/20 group-hover:text-red-400 transition-all w-full md:w-auto">
-                     <AlertTriangle size={14} /> {day.dd}
-                   </div>
-                 </div>
-               </motion.div>
-             ))}
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-};
-
 const Dashboard = ({ tradingLogs, onBuyClick }) => {
   const navigate = useNavigate();
-  const [, setCurrentGoldPrice] = useState(4432.69);
-  const [, setPriceHistory] = useState([]);
+  const [currentGoldPrice, setCurrentGoldPrice] = useState(4432.69);
+  const [priceHistory, setPriceHistory] = useState([]);
   const [isInitialAnalysis, setIsInitialAnalysis] = useState(true);
   const [lastSignalTime, setLastSignalTime] = useState(0);
   const [analysis, setAnalysis] = useState({ target: 0, stopLoss: 0, confidence: 0, reason: "Initializing Neural Core...", sentiment: "Analyzing" });
@@ -1256,7 +1011,7 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
   }, [isLinked]);
 
   const handleLinkAccount = async (e) => {
-    if (e) e.preventDefault();
+    e.preventDefault();
     setIsLinking(true);
     
     const credentials = {
@@ -1266,43 +1021,26 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
       platform: formData.platform
     };
 
-    try {
-      const linkResult = await metaApiService.linkAccount(credentials);
-      
-      if (linkResult && !linkResult.error) {
-        if (rememberMe) {
-          localStorage.setItem('metaTrader_creds', JSON.stringify(credentials));
-        } else {
-          localStorage.removeItem('metaTrader_creds');
-        }
-
-        setIsLinked(true);
-        setAccountInfo(prev => ({
-          ...prev,
-          id: linkResult.id,
-          server: credentials.server,
-          platform: credentials.platform,
-          isSimulated: linkResult.simulated,
-          balance: prev.balance || 0,
-          equity: prev.equity || 0,
-          profit: prev.profit || 0,
-          trades: []
-        }));
-
-        // Geef het account even de tijd om te 'booten' op de server
-        setTimeout(() => {
-          // De useEffect zal dit oppakken omdat isLinked is veranderd
-        }, 2000);
-
-      } else {
-        alert("Kon niet verbinden. Controleer je login gegevens, server naam en wachtwoord.");
-      }
-    } catch (err) {
-      console.error("Link error:", err);
-      alert("Er is iets misgegaan bij het koppelen.");
-    } finally {
-      setIsLinking(false);
+    const linkResult = await metaApiService.linkAccount(credentials);
+    
+    if (rememberMe) {
+      localStorage.setItem('metaTrader_creds', JSON.stringify(credentials));
+    } else {
+      localStorage.removeItem('metaTrader_creds');
     }
+
+    setIsLinked(true);
+    setAccountInfo({
+      id: linkResult.id,
+      server: credentials.server,
+      balance: 0,
+      equity: 0,
+      profit: 0,
+      isSimulated: linkResult.simulated,
+      trades: []
+    });
+    
+    setIsLinking(false);
   };
 
   const handleLogout = () => {
@@ -1373,7 +1111,7 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
           }));
         } else {
           // Alleen simuleren als we ECHT niks hebben van geen enkele API
-          console.warn("[Dashboard] Geen data van Trading én Stats API, fallback naar simulatie.");
+          console.warn("[Dashboard] Geen data van Trading Ã©n Stats API, fallback naar simulatie.");
           setAccountInfo(prev => {
             const baseBalance = prev.balance || 15000;
             const newProfit = (prev.profit || 0) + (Math.random() * 2 - 1);
@@ -1458,8 +1196,8 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
   }, [isInitialAnalysis, lastSignalTime, analysis.sentiment]);
 
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:p-10 flex flex-col lg:flex-row gap-6 lg:gap-10 relative">
-      <aside className="w-full lg:w-72 flex flex-col gap-6 lg:sticky lg:top-32 lg:self-start">
+    <div className="min-h-screen p-6 lg:p-10 flex flex-col lg:flex-row gap-10 relative">
+      <aside className="lg:w-72 flex flex-col gap-6 sticky top-32 self-start">
         {/* Navigation Card */}
         <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 shadow-xl relative overflow-hidden group">
           <div className="space-y-6 relative z-10">
@@ -1532,7 +1270,7 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
                   type="password" 
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  placeholder="••••••••" 
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" 
                   className="w-full bg-white/[0.03] border border-white/10 px-4 py-2.5 rounded-xl text-white text-[10px] font-bold focus:outline-none focus:border-blue-500 transition-all placeholder:text-gray-700 shadow-inner" 
                 />
               </div>
@@ -1645,27 +1383,22 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
             </motion.div>
 
             {/* Top KPI Cards - Primary Metrics Only */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10">
-              {/* Total Balance Card */}
-              <div className="bg-gradient-to-br from-blue-600/10 to-transparent border border-blue-500/20 rounded-[32px] p-8 relative overflow-hidden group transition-all hover:bg-blue-600/20 shadow-2xl">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-10">
+              <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 relative overflow-hidden group transition-all hover:bg-white/[0.07] shadow-2xl">
                 <div className="flex justify-between items-start mb-4">
-                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Total Balance</p>
-                  <div className="p-2 bg-blue-600/20 rounded-lg text-blue-400 border border-blue-500/30 group-hover:scale-110 transition-transform shadow-inner"><Wallet size={14} /></div>
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Total Balance</p>
+                  <div className="p-2 bg-blue-600/10 rounded-lg text-blue-500 border border-blue-500/20 group-hover:scale-110 transition-transform"><Wallet size={14} /></div>
                 </div>
                 <h3 className="text-3xl font-black tracking-tighter text-white">
                   {isLinked ? `$${(accountInfo.balance || 0).toLocaleString()}` : '$0'}
                 </h3>
                 <p className="text-[10px] font-bold text-gray-500 mt-2 uppercase tracking-tight">{isLinked ? accountInfo.server : 'No Connection'}</p>
-                <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                  <Wallet size={120} />
-                </div>
               </div>
 
-              {/* Total Result Card */}
-              <div className="bg-gradient-to-br from-purple-600/10 to-transparent border border-purple-500/20 rounded-[32px] p-8 relative overflow-hidden group transition-all hover:bg-purple-600/20 shadow-2xl">
+              <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 relative overflow-hidden group transition-all hover:bg-white/[0.07] shadow-2xl">
                 <div className="flex justify-between items-start mb-4">
-                  <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Total Result</p>
-                  <div className="p-2 bg-purple-600/20 rounded-lg text-purple-400 border border-purple-500/30 group-hover:scale-110 transition-transform shadow-inner"><Activity size={14} /></div>
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Total Result</p>
+                  <div className="p-2 bg-blue-600/10 rounded-lg text-blue-500 border border-blue-500/20 group-hover:scale-110 transition-transform"><Activity size={14} /></div>
                 </div>
                 <h3 className={`text-3xl font-black tracking-tighter ${(accountInfo.metrics?.totalProfit || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                   {isLinked ? `${(accountInfo.metrics?.totalProfit || 0) >= 0 ? '+' : ''}${(accountInfo.metrics?.totalProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0'}
@@ -1673,44 +1406,29 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
                 <p className={`text-[10px] font-bold ${(accountInfo.metrics?.totalProfit || 0) >= 0 ? 'text-green-500' : 'text-red-500'} mt-2 uppercase tracking-widest`}>
                   {isLinked ? `${(((accountInfo.metrics?.totalProfit || 0) / (accountInfo.balance || 1)) * 100).toFixed(2)}%` : '0.00%'}
                 </p>
-                <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                  <TrendingUp size={120} />
-                </div>
               </div>
 
-              {/* Bridge Status Card */}
-              <div className={`${isLinked ? 'bg-blue-600 shadow-[0_20px_40px_rgba(37,99,235,0.3)]' : 'bg-white/5'} border ${isLinked ? 'border-white/20' : 'border-white/10'} rounded-[32px] p-8 shadow-2xl transition-all relative overflow-hidden group`}>
+              <div className={`${isLinked ? 'bg-blue-600' : 'bg-white/5'} border border-white/10 rounded-[32px] p-8 shadow-2xl transition-all relative overflow-hidden group`}>
                 <div className="relative z-10">
                   <p className={`text-[10px] font-black ${isLinked ? 'text-blue-100' : 'text-gray-500'} uppercase tracking-widest mb-1`}>Bridge Status</p>
                   <div className="flex items-center gap-2 mt-2">
-                    <div className={`w-2 h-2 rounded-full ${isLinked ? 'bg-green-400 animate-pulse shadow-[0_0_12px_#4ade80]' : 'bg-gray-700'}`} />
+                    <div className={`w-2 h-2 rounded-full ${isLinked ? 'bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]' : 'bg-gray-700'}`} />
                     <h3 className="text-2xl font-black uppercase tracking-tighter text-white">
                       {isLinked ? 'CONNECTED' : 'OFFLINE'}
                     </h3>
                   </div>
-                  <p className={`text-[10px] font-bold ${isLinked ? 'text-blue-100/70' : 'text-gray-400'} italic mt-1 tracking-widest`}>{isLinked ? `ID: ${accountInfo.id}` : 'Link Required'}</p>
+                  <p className={`text-[10px] font-bold ${isLinked ? 'text-blue-100' : 'text-gray-400'} italic mt-1`}>{isLinked ? `ID: ${accountInfo.id}` : 'Link Required'}</p>
                 </div>
-                {isLinked && (
-                  <div className="absolute -right-6 -bottom-6 opacity-20 group-hover:scale-110 transition-transform group-hover:rotate-12 duration-700">
-                    <Activity size={140} className="text-white" />
-                  </div>
-                )}
-                {!isLinked && (
-                   <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <Shield size={120} />
-                  </div>
-                )}
+                {isLinked && <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform"><Activity size={80} /></div>}
               </div>
             </div>
 
             {/* Consolidated Audit & Performance Panel */}
-            <div className="bg-white/5 border border-white/10 rounded-[40px] p-6 md:p-10 relative overflow-hidden shadow-2xl">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
+            <div className="bg-white/5 border border-white/10 rounded-[40px] p-10 relative overflow-hidden shadow-2xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
                 {/* Financials Group */}
-                <div className="space-y-6 bg-blue-600/5 p-6 rounded-3xl border border-blue-500/10">
-                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] border-b border-blue-500/10 pb-2 flex items-center gap-2">
-                    <DollarSign size={12} /> Financials
-                  </p>
+                <div className="space-y-6">
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] border-b border-white/5 pb-2">Financials</p>
                   <div className="space-y-5">
                     {[
                       { label: 'Total Result', val: isLinked ? `$${(accountInfo.metrics?.totalProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0', sub: 'Net Profit/Loss', color: (accountInfo.metrics?.totalProfit || 0) >= 0 ? 'text-green-500' : 'text-red-500' },
@@ -1727,13 +1445,11 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
                 </div>
 
                 {/* Performance Group */}
-                <div className="space-y-6 bg-purple-600/5 p-6 rounded-3xl border border-purple-500/10">
-                  <p className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] border-b border-purple-500/10 pb-2 flex items-center gap-2">
-                    <Activity size={12} /> Performance
-                  </p>
+                <div className="space-y-6">
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] border-b border-white/5 pb-2">Performance</p>
                   <div className="space-y-5">
                     {[
-                      { label: 'Max Drawdown', val: isLinked ? `${Math.min(accountInfo.metrics?.maxDrawdown || 0, 100).toFixed(2)}%` : '0.00%', sub: 'Risk Exposure', color: 'text-white' },
+                      { label: 'Max Drawdown', val: isLinked ? `${(accountInfo.metrics?.maxDrawdown || 0).toFixed(2)}%` : '0.00%', sub: 'Risk Exposure', color: 'text-white' },
                       { label: 'Win Rate', val: isLinked ? `${(accountInfo.metrics?.winRate || 0).toFixed(1)}%` : '0%', sub: 'Accuracy', color: 'text-blue-500' },
                       { label: 'Profit Factor', val: isLinked ? (accountInfo.metrics?.profitFactor || 0).toFixed(2) : '0.00', sub: 'Efficiency', color: 'text-white' },
                       { label: 'Total Orders', val: isLinked ? (accountInfo.metrics?.totalTrades || 0).toString() : '0', sub: 'Verified Trades', color: 'text-white' }
@@ -1748,10 +1464,8 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
                 </div>
 
                 {/* Averages Group */}
-                <div className="space-y-6 bg-green-600/5 p-6 rounded-3xl border border-green-500/10">
-                  <p className="text-[10px] font-black text-green-400 uppercase tracking-[0.2em] border-b border-green-500/10 pb-2 flex items-center gap-2">
-                    <TrendingUp size={12} /> Averages
-                  </p>
+                <div className="space-y-6">
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] border-b border-white/5 pb-2">Averages</p>
                   <div className="space-y-5">
                     {[
                       { label: 'Average Win', val: isLinked ? `$${(accountInfo.metrics?.averageWin || 0).toFixed(2)}` : '$0', sub: 'Per Trade', color: 'text-green-500' },
@@ -1767,10 +1481,8 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
                 </div>
 
                 {/* Live Status Group */}
-                <div className="space-y-6 bg-yellow-600/5 p-6 rounded-3xl border border-yellow-500/10">
-                  <p className="text-[10px] font-black text-yellow-400 uppercase tracking-[0.2em] border-b border-yellow-500/10 pb-2 flex items-center gap-2">
-                    <Zap size={12} /> Live Status
-                  </p>
+                <div className="space-y-6">
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] border-b border-white/5 pb-2">Live Status</p>
                   <div className="space-y-5">
                     {[
                       { label: 'Equity', val: isLinked ? `$${(accountInfo.equity || 0).toLocaleString()}` : '$0', sub: 'Live Equity Sync', color: 'text-white' },
@@ -2067,11 +1779,9 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
                 <p className="text-[10px] font-bold text-green-500">Latency: 14ms</p>
               </div>
               <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 relative overflow-hidden group transition-all hover:bg-white/[0.07]">
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Max Drawdown</p>
-                <h3 className="text-3xl font-black mb-2 tracking-tighter text-red-500">
-                  {isLinked ? `${Math.min(accountInfo.metrics?.maxDrawdown || 0, 100).toFixed(2)}%` : '4.8%'}
-                </h3>
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isLinked ? 'Current Live Risk' : 'Master Account Audit'}</p>
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Master Pair</p>
+                <h3 className="text-3xl font-black mb-2 tracking-tighter text-white uppercase">XAU/USD</h3>
+                <p className="text-[10px] font-bold text-blue-500 italic uppercase tracking-widest">Institutional</p>
               </div>
               <div className="bg-blue-600 border border-blue-400/30 rounded-[32px] p-8 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform"><TrendingUp size={48} /></div>
@@ -2228,7 +1938,7 @@ const PaymentModal = ({ isOpen, step, onSelect, onConfirm, onClose, selectedPlan
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl">
-      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#0a0a0a] border border-white/10 rounded-[40px] w-full max-w-xl overflow-hidden shadow-2xl relative p-6 md:p-10 text-center">
+      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#0a0a0a] border border-white/10 rounded-[40px] w-full max-w-xl overflow-hidden shadow-2xl relative p-10 text-center">
         <button onClick={onClose} className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors"><X size={24} /></button>
         {step === 'select' && (
           <>
@@ -2326,7 +2036,7 @@ function App() {
     { type: 'SCAN', msg: "GOLD LIQUIDITY SYNC COMPLETE", meta: "latency: 12ms" },
   ]);
 
-  const usdtAddress = "0xada3abe97b3c5b03aaf3756bbfc99a5722611927"; // Officieel USDT Wallet Adres (BEP-20)
+  const usdtAddress = "0xYourUsdtWalletAddressGoesHere"; // VERVANG DIT DOOR JOUW ECHTE ADRES
 
   const handleSelectPlan = (plan) => { setSelectedPlan(plan); setPaymentStep('pay'); };
   const confirmPayment = () => { setPaymentStep('verify'); setTimeout(() => setPaymentStep('download'), 4000); };
@@ -2336,7 +2046,7 @@ function App() {
     const interval = setInterval(() => {
       const action = Math.random() > 0.5 ? "BUY" : "SELL";
       const confidence = (Math.random() * 5 + 92).toFixed(2);
-      const newLog = { type: 'TRADE', msg: `MT5 SIGNAL: AI ${action} GOLD (XAU/USD)`, meta: `CONF: ${confidence}% • NODE: ${Math.floor(Math.random() * 12) + 1}`, time: new Date().toLocaleTimeString([], { hour12: false }) };
+      const newLog = { type: 'TRADE', msg: `MT5 SIGNAL: AI ${action} GOLD (XAU/USD)`, meta: `CONF: ${confidence}% â€¢ NODE: ${Math.floor(Math.random() * 12) + 1}`, time: new Date().toLocaleTimeString([], { hour12: false }) };
       setTradingLogs(prev => [newLog, ...prev].slice(0, 15));
     }, 5000);
     return () => clearInterval(interval);
@@ -2352,10 +2062,9 @@ function App() {
           <Route path="/" element={<LandingPage onBuyClick={() => setShowPaymentModal(true)} tradingLogs={tradingLogs} />} />
           <Route path="/dashboard" element={<Dashboard tradingLogs={tradingLogs} onBuyClick={() => setShowPaymentModal(true)} />} />
           <Route path="/contract" element={<ContractPage />} />
-          <Route path="/results" element={<ResultsPage />} />
         </Routes>
         <Routes>
-          <Route path="/" element={<footer className="container mx-auto px-6 py-20 flex flex-col md:flex-row justify-between items-center gap-10 border-t border-white/5"><Logo /><p className="text-xs font-bold text-gray-600 tracking-widest uppercase">&copy; 2026 All Rights Reserved.</p><div className="flex gap-6 text-xs font-black text-gray-500 uppercase tracking-widest"><a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Twitter</a><a href="https://t.me/flexbotcommunity" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Telegram</a><a href="https://docs.flexbot.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Docs</a></div></footer>} />
+          <Route path="/" element={<footer className="container mx-auto px-6 py-20 flex flex-col md:flex-row justify-between items-center gap-10 border-t border-white/5"><Logo /><p className="text-xs font-bold text-gray-600 tracking-widest uppercase">&copy; 2026 All Rights Reserved.</p><div className="flex gap-6 text-xs font-black text-gray-500 uppercase tracking-widest"><a href="#" className="hover:text-white transition-colors">Twitter</a><a href="#" className="hover:text-white transition-colors">Telegram</a><a href="#" className="hover:text-white transition-colors">Docs</a></div></footer>} />
           <Route path="*" element={null} />
         </Routes>
       </div>
