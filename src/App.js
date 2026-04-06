@@ -1058,7 +1058,7 @@ const ResultsPage = () => {
   useEffect(() => {
     const fetchTrades = async () => {
       try {
-        const res = await fetch(`${FLEXBOT_SERVER}/api/trades?limit=200`);
+        const res = await fetch(`${FLEXBOT_SERVER}/api/trades?limit=2000`);
         const data = await res.json();
         if (data.ok) {
           setTrades(data.trades || []);
