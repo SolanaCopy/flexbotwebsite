@@ -1100,13 +1100,14 @@ const ResultsPage = () => {
 
   const weekLabel = `${selectedWeekStart.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} — ${selectedWeekEnd.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`;
 
-  // Filter trades for selected week (exclude weekends)
+  // Filter trades for selected week (exclude weekends and trades without result)
   const weekTrades = trades.filter(t => {
+    if (!t.result || t.outcome === 'closed') return false;
     const ts = t.closed_at || t.opened_at;
     if (!ts) return false;
     const d = new Date(ts);
     const day = d.getDay();
-    if (day === 0 || day === 6) return false; // skip Saturday/Sunday
+    if (day === 0 || day === 6) return false;
     return d >= selectedWeekStart && d <= new Date(selectedWeekEnd.getTime() + 86400000);
   });
 
