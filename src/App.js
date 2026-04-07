@@ -1273,27 +1273,31 @@ const ResultsPage = () => {
 
                     {/* Individual trades table */}
                     <div className="border-t border-white/5">
-                      {dayData.trades.map((t, ti) => (
-                        <div key={ti} className={`flex items-center justify-between px-3 sm:px-6 md:px-8 py-2.5 sm:py-3 ${ti !== dayData.trades.length - 1 ? 'border-b border-white/[0.03]' : ''} hover:bg-white/[0.02] transition-colors`}>
-                          <div className="flex items-center gap-2 sm:gap-3">
-                            <span className={`w-10 sm:w-14 text-center px-1.5 sm:px-2 py-1 rounded-lg text-[9px] sm:text-[10px] font-black ${t.direction === 'BUY' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-400'}`}>
-                              {t.direction}
-                            </span>
-                            <span className="text-[10px] sm:text-[11px] font-mono text-gray-500">
-                              {t.closed_at ? new Date(t.closed_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                            </span>
-                            {t.entry_price && <span className="text-[10px] text-gray-600 hidden sm:inline">@ {t.entry_price}</span>}
+                      {dayData.trades.map((t, ti) => {
+                        const isTP = t.outcome && t.outcome.toUpperCase().includes('TP');
+                        const isSL = t.outcome && t.outcome.toUpperCase().includes('SL');
+                        return (
+                          <div key={ti} className={`flex items-center justify-between gap-2 px-3 sm:px-6 md:px-8 py-3 sm:py-4 ${ti !== dayData.trades.length - 1 ? 'border-b border-white/[0.03]' : ''} hover:bg-white/[0.02] transition-colors`}>
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                              <span className={`w-12 sm:w-14 text-center px-2 py-1 rounded-lg text-[10px] sm:text-xs font-black shrink-0 ${t.direction === 'BUY' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                {t.direction}
+                              </span>
+                              <span className="text-xs sm:text-sm font-mono text-gray-300 tabular-nums shrink-0">
+                                {t.closed_at ? new Date(t.closed_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                              </span>
+                              {t.entry_price && <span className="text-xs sm:text-sm text-gray-500 tabular-nums truncate">@ {t.entry_price}</span>}
+                            </div>
+                            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                              <span className={`text-sm sm:text-base font-black tabular-nums ${t.profitNum >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {t.result ? t.result : (t.profitNum !== 0 ? `${t.profitNum >= 0 ? '+' : ''}$${Math.abs(t.profitNum).toFixed(2)}` : '—')}
+                              </span>
+                              <span className={`px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-black uppercase ${isTP ? 'bg-green-500/15 text-green-400 border border-green-500/30' : isSL ? 'bg-red-500/15 text-red-400 border border-red-500/30' : 'bg-white/5 text-gray-400 border border-white/10'}`}>
+                                {isTP ? 'TP' : isSL ? 'SL' : '—'}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 sm:gap-3">
-                            <span className={`text-xs sm:text-sm font-black ${t.profitNum >= 0 ? 'text-green-500' : 'text-red-400'}`}>
-                              {t.result ? t.result : (t.profitNum !== 0 ? `${t.profitNum >= 0 ? '+' : ''}$${Math.abs(t.profitNum).toFixed(2)}` : '—')}
-                            </span>
-                            <span className={`px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[8px] sm:text-[9px] font-black ${t.outcome === 'TP' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : t.outcome === 'SL' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-white/5 text-gray-500 border border-white/10'}`}>
-                              {t.outcome === 'TP' ? 'TP' : t.outcome === 'SL' ? 'SL' : t.outcome || '—'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </motion.div>
                 );
