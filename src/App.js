@@ -2360,7 +2360,7 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
                   <table className="w-full text-left">
                     <thead><tr className="border-b border-white/5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]"><th className="pb-6">Asset Pair</th><th className="pb-6">Position</th><th className="pb-6">Entry Price</th><th className="pb-6">Current</th><th className="pb-6">PnL (USD)</th><th className="pb-6">Status</th></tr></thead>
                     <tbody className="text-sm font-bold text-gray-300">
-                      {(isLinked ? accountInfo.trades : []).map((trade, i) => (
+                      {isLinked && accountInfo.trades.map((trade, i) => (
                         <tr key={i} className="group hover:bg-white/[0.02] transition-colors border-b border-white/5 last:border-0">
                           <td className="py-6 flex items-center gap-3 text-white"><div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 font-black text-xs">X</div>{trade.pair}</td>
                           <td className="py-6"><span className={`px-2 py-1 rounded text-[10px] ${(trade.side || trade.type) === 'LONG' || (trade.side || trade.type) === 'BUY' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>{trade.side || trade.type}</span></td>
@@ -2370,9 +2370,19 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
                           <td className="py-6"><div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div><span className="text-xs text-gray-500 uppercase">{trade.status}</span></div></td>
                         </tr>
                       ))}
-                      {!isLinked && (
+                      {!isLinked && activeSignal && (
+                        <tr className="group hover:bg-white/[0.02] transition-colors">
+                          <td className="py-6 flex items-center gap-3 text-white"><div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 font-black text-xs">XAU</div>{activeSignal.symbol}</td>
+                          <td className="py-6"><span className={`px-2 py-1 rounded text-[10px] ${activeSignal.direction === 'BUY' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>{activeSignal.direction}</span></td>
+                          <td className="py-6 font-mono text-xs text-white tabular-nums">{activeSignal.entry_price ? activeSignal.entry_price.toFixed(2) : '—'}</td>
+                          <td className="py-6 font-mono text-xs text-gray-500 tabular-nums">TP {(activeSignal.tp || 0).toFixed(2)}</td>
+                          <td className="py-6 font-mono text-xs text-red-400 tabular-nums">SL {(activeSignal.sl || 0).toFixed(2)}</td>
+                          <td className="py-6"><div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div><span className="text-xs text-green-500 uppercase">Active</span></div></td>
+                        </tr>
+                      )}
+                      {!isLinked && !activeSignal && (
                         <tr>
-                          <td colSpan="6" className="py-20 text-center text-[10px] font-bold text-gray-600 uppercase tracking-widest">Connect account to view active trades</td>
+                          <td colSpan="6" className="py-20 text-center text-[10px] font-bold text-gray-600 uppercase tracking-widest">No active master trade — waiting for next setup</td>
                         </tr>
                       )}
                       {isLinked && accountInfo.trades.length === 0 && (
