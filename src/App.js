@@ -1329,23 +1329,20 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
         const tradesData = await tradesRes.json();
         if (sigData.ok) setActiveSignal(sigData.signal);
         if (tradesData.ok) {
+          const START_BALANCE = 100000;
           const trades = (tradesData.trades || []).filter(t => t.result && t.outcome !== 'closed');
           const parseR = (r) => parseFloat(String(r).replace(/[^0-9.\-+]/g, '')) || 0;
-          const totalProfit = trades.reduce((acc, t) => acc + parseR(t.result), 0);
           const wins = trades.filter(t => parseR(t.result) > 0).length;
           const winRate = trades.length > 0 ? (wins / trades.length) * 100 : 0;
-          // Compute max drawdown from running balance
-          let peak = 0, maxDD = 0, running = 0;
-          [...trades].reverse().forEach(t => {
-            running += parseR(t.result);
-            if (running > peak) peak = running;
-            const dd = peak - running;
-            if (dd > maxDD) maxDD = dd;
-          });
-          const balance = tradesData.account?.balance || 100000;
-          const maxDDPct = balance > 0 ? (maxDD / balance) * 100 : 0;
+          const balance = tradesData.account?.balance || START_BALANCE;
+          const equity = tradesData.account?.equity || balance;
+          // Real P/L = current equity vs starting balance
+          const totalProfit = equity - START_BALANCE;
+          // Max drawdown from starting balance
+          const maxDD = Math.max(0, START_BALANCE - Math.min(equity, balance));
+          const maxDDPct = (maxDD / START_BALANCE) * 100;
           setMasterStats({
-            equity: tradesData.account?.equity || 0,
+            equity,
             balance,
             totalProfit,
             winRate,
