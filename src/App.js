@@ -1315,20 +1315,50 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
   const [lastSignalTime, setLastSignalTime] = useState(0);
   const [analysis, setAnalysis] = useState({ target: 0, stopLoss: 0, confidence: 0, reason: "Initializing Neural Core...", sentiment: "Analyzing" });
   const [activeSignal, setActiveSignal] = useState(null);
+  const [masterStats, setMasterStats] = useState(null);
 
-  // Fetch real active signal from server
+  // Fetch real active signal + master account stats from server
   useEffect(() => {
-    const fetchActiveSignal = async () => {
+    const fetchServerData = async () => {
       try {
-        const res = await fetch(`${FLEXBOT_SERVER}/api/active-signal?symbol=XAUUSD`);
-        const data = await res.json();
-        if (data.ok) setActiveSignal(data.signal);
+        const [sigRes, tradesRes] = await Promise.all([
+          fetch(`${FLEXBOT_SERVER}/api/active-signal?symbol=XAUUSD`),
+          fetch(`${FLEXBOT_SERVER}/api/trades?limit=2000`),
+        ]);
+        const sigData = await sigRes.json();
+        const tradesData = await tradesRes.json();
+        if (sigData.ok) setActiveSignal(sigData.signal);
+        if (tradesData.ok) {
+          const trades = (tradesData.trades || []).filter(t => t.result && t.outcome !== 'closed');
+          const parseR = (r) => parseFloat(String(r).replace(/[^0-9.\-+]/g, '')) || 0;
+          const totalProfit = trades.reduce((acc, t) => acc + parseR(t.result), 0);
+          const wins = trades.filter(t => parseR(t.result) > 0).length;
+          const winRate = trades.length > 0 ? (wins / trades.length) * 100 : 0;
+          // Compute max drawdown from running balance
+          let peak = 0, maxDD = 0, running = 0;
+          [...trades].reverse().forEach(t => {
+            running += parseR(t.result);
+            if (running > peak) peak = running;
+            const dd = peak - running;
+            if (dd > maxDD) maxDD = dd;
+          });
+          const balance = tradesData.account?.balance || 100000;
+          const maxDDPct = balance > 0 ? (maxDD / balance) * 100 : 0;
+          setMasterStats({
+            equity: tradesData.account?.equity || 0,
+            balance,
+            totalProfit,
+            winRate,
+            maxDrawdown: maxDDPct,
+            tradeCount: trades.length,
+          });
+        }
       } catch (e) {
-        console.error('[Dashboard] Failed to fetch active signal:', e);
+        console.error('[Dashboard] Failed to fetch server data:', e);
       }
     };
-    fetchActiveSignal();
-    const interval = setInterval(fetchActiveSignal, 15000);
+    fetchServerData();
+    const interval = setInterval(fetchServerData, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -2210,31 +2240,31 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
           <div className="flex flex-col gap-10">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-10">
               <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-[32px] p-4 sm:p-8 relative overflow-hidden group transition-all hover:bg-white/[0.07]">
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Neural Core</p>
-                <h3 className="text-xl sm:text-3xl font-black mb-2 tracking-tighter uppercase text-white">{analysis.sentiment === 'Analyzing' ? 'SYNCING' : 'OPTIMIZED'}</h3>
-                <p className="text-[10px] font-bold text-green-500">Latency: 14ms</p>
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Master Status</p>
+                <h3 className="text-xl sm:text-3xl font-black mb-2 tracking-tighter uppercase text-white">{activeSignal ? 'IN TRADE' : 'STANDBY'}</h3>
+                <p className="text-[10px] font-bold text-green-500 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>Live Connection</p>
               </div>
               <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-[32px] p-4 sm:p-8 relative overflow-hidden group transition-all hover:bg-white/[0.07]">
                 <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Max Drawdown</p>
-                <h3 className="text-xl sm:text-3xl font-black mb-2 tracking-tighter text-red-500">
-                  {isLinked ? `${Math.min(accountInfo.metrics?.maxDrawdown || 0, 100).toFixed(2)}%` : '4.8%'}
+                <h3 className="text-xl sm:text-3xl font-black mb-2 tracking-tighter text-red-500 tabular-nums">
+                  {isLinked ? `${Math.min(accountInfo.metrics?.maxDrawdown || 0, 100).toFixed(2)}%` : (masterStats ? `${masterStats.maxDrawdown.toFixed(2)}%` : '—')}
                 </h3>
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isLinked ? 'Current Live Risk' : 'Master Account Audit'}</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isLinked ? 'Current Live Risk' : 'Master Account'}</p>
               </div>
               <div className="bg-blue-600 border border-blue-400/30 rounded-2xl sm:rounded-[32px] p-4 sm:p-8 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform"><TrendingUp size={48} /></div>
                 <p className="text-[10px] font-black text-blue-100 uppercase tracking-widest mb-1 opacity-80">Win Rate</p>
-                <h3 className="text-xl sm:text-3xl font-black mb-2 tracking-tighter text-white">
-                  {isLinked && accountInfo.metrics?.winRate ? `${accountInfo.metrics.winRate.toFixed(1)}%` : '74.2%'}
+                <h3 className="text-xl sm:text-3xl font-black mb-2 tracking-tighter text-white tabular-nums">
+                  {isLinked && accountInfo.metrics?.winRate ? `${accountInfo.metrics.winRate.toFixed(1)}%` : (masterStats ? `${masterStats.winRate.toFixed(1)}%` : '—')}
                 </h3>
-                <p className="text-[10px] font-bold text-blue-100 italic">{isLinked ? 'Live Account Data' : 'Master Account Audit'}</p>
+                <p className="text-[10px] font-bold text-blue-100 italic">{isLinked ? 'Live Account Data' : `${masterStats?.tradeCount || 0} Trades Tracked`}</p>
               </div>
               <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-[32px] p-4 sm:p-8 relative overflow-hidden group transition-all hover:bg-white/[0.07]">
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Total Return</p>
-                <h3 className="text-xl sm:text-3xl font-black mb-2 tracking-tighter text-green-500">
-                  {isLinked && accountInfo.metrics?.totalProfit !== undefined ? 
-                    (accountInfo.metrics.totalProfit >= 0 ? `+$${accountInfo.metrics.totalProfit.toFixed(2)}` : `-$${Math.abs(accountInfo.metrics.totalProfit).toFixed(2)}`) 
-                    : '+342.18%'}
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Total P/L</p>
+                <h3 className={`text-xl sm:text-3xl font-black mb-2 tracking-tighter tabular-nums ${(masterStats?.totalProfit || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {isLinked && accountInfo.metrics?.totalProfit !== undefined ?
+                    (accountInfo.metrics.totalProfit >= 0 ? `+$${accountInfo.metrics.totalProfit.toFixed(2)}` : `-$${Math.abs(accountInfo.metrics.totalProfit).toFixed(2)}`)
+                    : (masterStats ? `${masterStats.totalProfit >= 0 ? '+' : '-'}$${Math.abs(masterStats.totalProfit).toFixed(0)}` : '—')}
                 </h3>
                 <p className="text-[10px] font-bold text-green-500 uppercase tracking-widest">{isLinked ? 'Verified Result' : 'All Time Verified'}</p>
               </div>
