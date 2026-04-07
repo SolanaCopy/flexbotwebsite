@@ -1783,33 +1783,30 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
               </div>
             </div>
 
-            {/* Strategy Details */}
+            {/* Setup */}
             <div className="bg-black/40 border border-white/10 rounded-[32px] p-6 shadow-2xl backdrop-blur-md">
               <div className="flex justify-between items-center mb-5">
                 <div>
-                  <h3 className="text-[9px] font-black tracking-widest uppercase text-gray-500">How It Trades</h3>
-                  <p className="text-[8px] font-bold text-blue-500 mt-0.5 uppercase">Strategy Setup</p>
+                  <h3 className="text-[9px] font-black tracking-widest uppercase text-gray-500">Setup</h3>
+                  <p className="text-[8px] font-bold text-blue-500 mt-0.5 uppercase">Active Strategy</p>
                 </div>
                 <div className="px-2 py-0.5 bg-green-500/10 border border-green-500/20 rounded text-[8px] font-black text-green-400 flex items-center gap-1">
-                  <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></div>ACTIVE
+                  <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></div>LIVE
                 </div>
               </div>
               <div className="space-y-2">
-                {[
-                  { label: 'Symbol', value: 'XAUUSD (Gold)' },
-                  { label: 'Timeframes', value: '5M / 15M' },
-                  { label: 'Setups', value: 'BB Bounce + EMA Pullback' },
-                  { label: 'Risk per Trade', value: '~0.5% of equity' },
-                  { label: 'Reward / Risk', value: '2.0 R' },
-                  { label: 'Max Daily Loss', value: '5% (auto-stop)' },
-                  { label: 'News Filter', value: 'High-impact blackout' },
-                  { label: 'Weekend Hold', value: 'Never (Friday close)' },
-                ].map((item, i) => (
-                  <div key={i} className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
-                    <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">{item.label}</span>
-                    <span className="text-[10px] font-black text-white text-right">{item.value}</span>
-                  </div>
-                ))}
+                <div className="flex justify-between items-center py-2 border-b border-white/5">
+                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Symbol</span>
+                  <span className="text-[10px] font-black text-white">XAUUSD</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-white/5">
+                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Timeframes</span>
+                  <span className="text-[10px] font-black text-white">5M / 15M</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Setups</span>
+                  <span className="text-[10px] font-black text-white">BB Bounce + EMA Pullback</span>
+                </div>
               </div>
             </div>
 
