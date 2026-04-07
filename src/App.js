@@ -1154,55 +1154,55 @@ const ResultsPage = () => {
           <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-500/[0.03] blur-[150px] rounded-full -z-10 animate-pulse"></div>
           <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-green-500/[0.02] blur-[150px] rounded-full -z-10"></div>
 
-          <div className="flex flex-col xl:flex-row items-center justify-between gap-8 mb-12 border-b border-white/5 pb-10">
-            <div className="flex items-center gap-5 w-full xl:w-auto border-b xl:border-b-0 border-white/5 pb-6 xl:pb-0">
-              <div className="w-16 h-16 rounded-3xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center shadow-[0_0_30px_rgba(37,99,235,0.2)] shrink-0">
-                <LayoutDashboard className="text-blue-500" size={32} />
+          {/* Header */}
+          <div className="mb-8 sm:mb-12 border-b border-white/5 pb-6 sm:pb-10 space-y-6">
+            {/* Title row */}
+            <div className="flex items-center gap-4 sm:gap-5">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center shadow-[0_0_30px_rgba(37,99,235,0.2)] shrink-0">
+                <LayoutDashboard className="text-blue-500 w-6 h-6 sm:w-8 sm:h-8" />
               </div>
-              <div>
-                <h3 className="text-xl sm:text-3xl md:text-4xl font-black text-white uppercase tracking-tighter mb-1">Trading Journal</h3>
-                <p className="text-gray-400 font-medium text-xs md:text-sm">Master EA Account {account ? `— ${account.server}` : ''}</p>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-xl sm:text-3xl md:text-4xl font-black text-white uppercase tracking-tighter mb-1 truncate">Trading Journal</h3>
+                <p className="text-gray-400 font-medium text-[10px] sm:text-xs md:text-sm truncate">Master EA Account {account ? `— ${account.server}` : ''}</p>
               </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row items-center gap-4 w-full xl:w-auto">
-              {/* Week Selector */}
-              <div className="flex items-center gap-2 bg-white/5 border border-white/10 p-2 rounded-full w-full lg:w-auto justify-between lg:justify-center">
-                <button
-                  onClick={() => canGoPrev && setWeekOffset(prev => prev - 1)}
-                  disabled={!canGoPrev}
-                  className={`p-2.5 rounded-full transition-all ${!canGoPrev ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/10 hover:text-white text-gray-400'}`}
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <div className="px-2 sm:px-3 text-[9px] sm:text-[10px] md:text-xs font-black text-white tracking-widest uppercase text-center min-w-[140px] sm:min-w-[180px]">
-                  {weekLabel}
-                </div>
-                <button
-                  onClick={() => weekOffset < 0 && setWeekOffset(prev => prev + 1)}
-                  disabled={weekOffset >= 0}
-                  className={`p-2.5 rounded-full transition-all ${weekOffset >= 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/10 hover:text-white text-gray-400'}`}
-                >
-                  <ChevronRight size={18} />
-                </button>
+            {/* Week selector */}
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 p-1.5 sm:p-2 rounded-full w-full max-w-md mx-auto">
+              <button
+                onClick={() => canGoPrev && setWeekOffset(prev => prev - 1)}
+                disabled={!canGoPrev}
+                className={`p-2 sm:p-2.5 rounded-full transition-all shrink-0 ${!canGoPrev ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/10 hover:text-white text-gray-400'}`}
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <div className="flex-1 px-2 text-[10px] sm:text-xs font-black text-white tracking-widest uppercase text-center">
+                {weekLabel}
               </div>
+              <button
+                onClick={() => weekOffset < 0 && setWeekOffset(prev => prev + 1)}
+                disabled={weekOffset >= 0}
+                className={`p-2 sm:p-2.5 rounded-full transition-all shrink-0 ${weekOffset >= 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/10 hover:text-white text-gray-400'}`}
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
 
-              {/* Weekly Stats */}
-              <div className="grid grid-cols-3 gap-3 sm:gap-6 bg-white/5 rounded-2xl sm:rounded-3xl p-3 sm:p-6 border border-white/10 w-full lg:w-auto">
-                 <div className="text-center">
-                   <p className="text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Win Rate</p>
-                   <p className="text-lg sm:text-xl md:text-2xl font-black text-white">{weekWinRate}%</p>
-                 </div>
-                 <div className="text-center border-x border-white/10 px-2">
-                   <p className="text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Trades</p>
-                   <p className="text-lg sm:text-xl md:text-2xl font-black text-white">{weekTrades.length}</p>
-                 </div>
-                 <div className="text-center min-w-0">
-                   <p className="text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">P/L</p>
-                   <p className={`text-base sm:text-lg md:text-xl font-black tabular-nums truncate ${weekProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                     {weekProfit >= 0 ? '+' : '-'}${Math.abs(weekProfit).toFixed(2)}
-                   </p>
-                 </div>
+            {/* Weekly stats */}
+            <div className="grid grid-cols-3 bg-white/5 rounded-2xl sm:rounded-3xl border border-white/10 overflow-hidden">
+              <div className="text-center py-4 sm:py-6 px-2">
+                <p className="text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Win Rate</p>
+                <p className="text-lg sm:text-2xl md:text-3xl font-black text-white tabular-nums">{weekWinRate}%</p>
+              </div>
+              <div className="text-center py-4 sm:py-6 px-2 border-x border-white/10">
+                <p className="text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Trades</p>
+                <p className="text-lg sm:text-2xl md:text-3xl font-black text-white tabular-nums">{weekTrades.length}</p>
+              </div>
+              <div className="text-center py-4 sm:py-6 px-2 min-w-0">
+                <p className="text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1.5">P/L</p>
+                <p className={`text-base sm:text-xl md:text-2xl font-black tabular-nums truncate ${weekProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {weekProfit >= 0 ? '+' : '-'}${Math.abs(weekProfit).toFixed(2)}
+                </p>
               </div>
             </div>
           </div>
