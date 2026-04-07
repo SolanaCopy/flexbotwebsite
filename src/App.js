@@ -1314,6 +1314,23 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
   const [isInitialAnalysis, setIsInitialAnalysis] = useState(true);
   const [lastSignalTime, setLastSignalTime] = useState(0);
   const [analysis, setAnalysis] = useState({ target: 0, stopLoss: 0, confidence: 0, reason: "Initializing Neural Core...", sentiment: "Analyzing" });
+  const [activeSignal, setActiveSignal] = useState(null);
+
+  // Fetch real active signal from server
+  useEffect(() => {
+    const fetchActiveSignal = async () => {
+      try {
+        const res = await fetch(`${FLEXBOT_SERVER}/api/active-signal?symbol=XAUUSD`);
+        const data = await res.json();
+        if (data.ok) setActiveSignal(data.signal);
+      } catch (e) {
+        console.error('[Dashboard] Failed to fetch active signal:', e);
+      }
+    };
+    fetchActiveSignal();
+    const interval = setInterval(fetchActiveSignal, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   // --- MetaTrader Account State ---
   const [isLinked, setIsLinked] = useState(false);
@@ -2243,16 +2260,34 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
                     )}
                   </AnimatePresence>
                   <div className="absolute bottom-12 left-6 flex flex-col gap-4 pointer-events-none sm:pointer-events-auto z-30">
-                    <motion.div layout className="bg-black/80 border border-white/10 p-3 sm:p-4 rounded-2xl backdrop-blur-xl shadow-xl min-w-[160px] sm:min-w-[220px]">
-                      <div className="flex justify-between items-start mb-3">
-                        <div><p className="text-[7px] font-black text-blue-400 uppercase tracking-widest mb-0.5">Neural AI Analysis</p><h4 className={`text-[14px] font-black italic uppercase ${analysis.sentiment.includes('Buy') ? 'text-green-400' : analysis.sentiment.includes('Sell') ? 'text-red-400' : 'text-white'}`}>{analysis.sentiment}</h4></div>
-                        <div className={`px-1.5 py-0.5 border rounded ${analysis.sentiment.includes('Buy') ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-white/10 text-white border-white/20'}`}><span className="text-[9px] font-black">{analysis.confidence}%</span></div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-[9px] font-bold border-b border-white/5 pb-1.5"><span className="text-gray-500 uppercase">Target</span><span className="text-white">{(analysis.target || 0).toFixed(2)}</span></div>
-                        <div className="flex justify-between text-[9px] font-bold border-b border-white/5 pb-1.5"><span className="text-red-400 uppercase">Stop Loss</span><span className="text-red-400">{(analysis.stopLoss || 0).toFixed(2)}</span></div>
-                        <div className="flex justify-between text-[9px] font-bold"><span className="text-gray-500 uppercase">Logic</span><span className="text-blue-400 text-right leading-tight italic">"{analysis.reason}"</span></div>
-                      </div>
+                    <motion.div layout className="bg-black/80 border border-white/10 p-3 sm:p-4 rounded-2xl backdrop-blur-xl shadow-xl min-w-[180px] sm:min-w-[240px]">
+                      {activeSignal ? (
+                        <>
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <p className="text-[7px] font-black text-blue-400 uppercase tracking-widest mb-0.5">Active Master Trade</p>
+                              <h4 className={`text-[14px] font-black uppercase ${activeSignal.direction === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>{activeSignal.direction} XAUUSD</h4>
+                            </div>
+                            <div className="px-1.5 py-0.5 border rounded bg-green-500/10 text-green-500 border-green-500/20 flex items-center gap-1">
+                              <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></div>
+                              <span className="text-[8px] font-black uppercase">Live</span>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            {activeSignal.entry_price && (
+                              <div className="flex justify-between text-[9px] font-bold border-b border-white/5 pb-1.5"><span className="text-gray-500 uppercase">Entry</span><span className="text-white tabular-nums">{activeSignal.entry_price.toFixed(2)}</span></div>
+                            )}
+                            <div className="flex justify-between text-[9px] font-bold border-b border-white/5 pb-1.5"><span className="text-green-400 uppercase">Target</span><span className="text-green-400 tabular-nums">{(activeSignal.tp || 0).toFixed(2)}</span></div>
+                            <div className="flex justify-between text-[9px] font-bold"><span className="text-red-400 uppercase">Stop Loss</span><span className="text-red-400 tabular-nums">{(activeSignal.sl || 0).toFixed(2)}</span></div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center py-2">
+                          <p className="text-[7px] font-black text-blue-400 uppercase tracking-widest mb-1">Master Account</p>
+                          <h4 className="text-[14px] font-black uppercase text-gray-400">No Active Trade</h4>
+                          <p className="text-[8px] font-bold text-gray-600 italic mt-1">Waiting for next setup</p>
+                        </div>
+                      )}
                     </motion.div>
                   </div>
                 </div>
