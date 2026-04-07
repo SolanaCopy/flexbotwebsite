@@ -1197,10 +1197,10 @@ const ResultsPage = () => {
                    <p className="text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Trades</p>
                    <p className="text-lg sm:text-xl md:text-2xl font-black text-white">{weekTrades.length}</p>
                  </div>
-                 <div className="text-center">
+                 <div className="text-center min-w-0">
                    <p className="text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">P/L</p>
-                   <p className={`text-lg sm:text-xl md:text-2xl font-black ${weekProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                     {weekProfit >= 0 ? '+' : ''}${weekProfit.toFixed(2)}
+                   <p className={`text-base sm:text-lg md:text-xl font-black tabular-nums truncate ${weekProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                     {weekProfit >= 0 ? '+' : '-'}${Math.abs(weekProfit).toFixed(2)}
                    </p>
                  </div>
               </div>
@@ -1262,8 +1262,8 @@ const ResultsPage = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-4 sm:gap-6">
-                        <p className={`text-2xl sm:text-3xl font-black tracking-tight ${dayWin ? 'text-green-500' : 'text-red-400'}`}>
-                          {dayProfit !== 0 ? `${dayWin ? '+' : ''}$${Math.abs(dayProfit).toFixed(2)}` : (tpCount > slCount ? 'WIN' : 'LOSS')}
+                        <p className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight tabular-nums ${dayWin ? 'text-green-500' : 'text-red-400'}`}>
+                          {dayProfit !== 0 ? `${dayWin ? '+' : '-'}$${Math.abs(dayProfit).toFixed(2)}` : (tpCount > slCount ? 'WIN' : 'LOSS')}
                         </p>
                       </div>
                     </div>
