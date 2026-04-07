@@ -1282,10 +1282,10 @@ const ResultsPage = () => {
                               <span className={`w-12 sm:w-14 text-center px-2 py-1 rounded-lg text-[10px] sm:text-xs font-black shrink-0 ${t.direction === 'BUY' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
                                 {t.direction}
                               </span>
-                              <span className="text-xs sm:text-sm font-mono text-gray-300 tabular-nums shrink-0">
+                              <span className="text-sm sm:text-base font-mono font-bold text-white tabular-nums shrink-0">
                                 {t.closed_at ? new Date(t.closed_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                               </span>
-                              {t.entry_price && <span className="text-xs sm:text-sm text-gray-500 tabular-nums truncate">@ {t.entry_price}</span>}
+                              {t.entry_price && <span className="text-sm sm:text-base font-bold text-gray-300 tabular-nums truncate">@ {t.entry_price}</span>}
                             </div>
                             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                               <span className={`text-sm sm:text-base font-black tabular-nums ${t.profitNum >= 0 ? 'text-green-400' : 'text-red-400'}`}>
