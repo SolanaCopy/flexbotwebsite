@@ -984,61 +984,76 @@ const AccountHistoryChart = ({ isLinked, dailyGrowth }) => {
   );
 };
 
-const TradingViewAnalysisWidget = ({ analysis }) => {
-  const isBuy = analysis.sentiment.includes('Buy');
-  const isStrongBuy = analysis.sentiment.includes('Strong Buy');
-  const isSell = analysis.sentiment.includes('Sell');
-  const isStrongSell = analysis.sentiment.includes('Strong Sell');
-  
-  const color = isStrongBuy || isBuy ? 'text-green-500' : isStrongSell || isSell ? 'text-red-400' : 'text-blue-400';
-  const bgColor = isStrongBuy || isBuy ? 'bg-green-500/10' : isStrongSell || isSell ? 'bg-red-500/10' : 'bg-blue-500/10';
-  const borderColor = isStrongBuy || isBuy ? 'border-green-500/20' : isStrongSell || isSell ? 'border-red-500/20' : 'border-blue-500/20';
-  const dotColor = isStrongBuy || isBuy ? 'bg-green-500' : isStrongSell || isSell ? 'bg-red-500' : 'bg-blue-500';
+const TradingViewAnalysisWidget = ({ activeSignal, masterStats }) => {
+  const direction = activeSignal?.direction;
+  const color = direction === 'BUY' ? 'text-green-500' : direction === 'SELL' ? 'text-red-400' : 'text-gray-400';
+  const bgColor = direction === 'BUY' ? 'bg-green-500/10' : direction === 'SELL' ? 'bg-red-500/10' : 'bg-white/5';
+  const borderColor = direction === 'BUY' ? 'border-green-500/20' : direction === 'SELL' ? 'border-red-500/20' : 'border-white/10';
+  const dotColor = direction === 'BUY' ? 'bg-green-500' : direction === 'SELL' ? 'bg-red-500' : 'bg-gray-500';
+  const label = direction || 'NO TRADE';
 
   return (
-    <div className="flex flex-col h-full space-y-6">
+    <div className="flex flex-col h-full space-y-4">
       <div className="flex-1 flex flex-col items-center justify-center relative py-4">
-        {/* Neural Scan Ring */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <motion.div 
+          <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
             className={`w-36 h-36 rounded-full border border-dashed opacity-20 ${color.replace('text-', 'border-')}`}
           />
-          <motion.div 
+          <motion.div
             animate={{ rotate: -360 }}
             transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
             className={`w-28 h-28 rounded-full border border-dotted opacity-10 ${color.replace('text-', 'border-')}`}
           />
         </div>
-        
+
         <div className="relative z-10 text-center">
           <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${bgColor} border ${borderColor} mb-4`}>
             <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${dotColor}`} />
-            <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${color}`}>Neural Sentiment Pulse</span>
+            <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${color}`}>Master Position</span>
           </div>
           <h4 className={`text-4xl font-black italic uppercase tracking-tighter mb-2 ${color}`}>
-            {analysis.sentiment.split(' / ')[0]}
+            {label}
           </h4>
           <div className="flex items-center justify-center gap-2">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest opacity-60">Neural Accuracy</span>
-            <span className="text-[10px] font-black text-white">{analysis.confidence}%</span>
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest opacity-60">Win Rate</span>
+            <span className="text-[10px] font-black text-white tabular-nums">{masterStats ? `${masterStats.winRate.toFixed(1)}%` : '—'}</span>
           </div>
         </div>
       </div>
-      
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        {[
-          { label: 'Moving Avg', value: analysis.movingAvg || 'NEUTRAL', color: analysis.movingAvg === 'BUY' ? 'text-green-500' : analysis.movingAvg === 'SELL' ? 'text-red-400' : 'text-gray-400' },
-          { label: 'Oscillators', value: analysis.oscillator || 'NEUTRAL', color: analysis.oscillator === 'BUY' ? 'text-green-500' : analysis.oscillator === 'SELL' ? 'text-red-400' : 'text-gray-400' },
-          { label: 'Liquidity', value: analysis.liquidity || 'STABLE', color: 'text-blue-400' }
-        ].map((item, i) => (
-          <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-3 text-center backdrop-blur-sm transition-all hover:bg-white/10">
-            <p className="text-[7px] font-black text-gray-500 uppercase mb-1.5 tracking-tighter">{item.label}</p>
-            <p className={`text-[9px] font-black ${item.color} leading-none`}>{item.value}</p>
+
+      {activeSignal ? (
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-3 text-center backdrop-blur-sm">
+            <p className="text-[7px] font-black text-gray-500 uppercase mb-1.5 tracking-tighter">Entry</p>
+            <p className="text-[10px] font-black text-white tabular-nums">{activeSignal.entry_price ? activeSignal.entry_price.toFixed(2) : '—'}</p>
           </div>
-        ))}
-      </div>
+          <div className="bg-green-500/5 border border-green-500/10 rounded-2xl p-3 text-center backdrop-blur-sm">
+            <p className="text-[7px] font-black text-gray-500 uppercase mb-1.5 tracking-tighter">Take Profit</p>
+            <p className="text-[10px] font-black text-green-400 tabular-nums">{(activeSignal.tp || 0).toFixed(2)}</p>
+          </div>
+          <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-3 text-center backdrop-blur-sm">
+            <p className="text-[7px] font-black text-gray-500 uppercase mb-1.5 tracking-tighter">Stop Loss</p>
+            <p className="text-[10px] font-black text-red-400 tabular-nums">{(activeSignal.sl || 0).toFixed(2)}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-3 text-center backdrop-blur-sm">
+            <p className="text-[7px] font-black text-gray-500 uppercase mb-1.5 tracking-tighter">Trades</p>
+            <p className="text-[10px] font-black text-white tabular-nums">{masterStats?.tradeCount || 0}</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-3 text-center backdrop-blur-sm">
+            <p className="text-[7px] font-black text-gray-500 uppercase mb-1.5 tracking-tighter">Max DD</p>
+            <p className="text-[10px] font-black text-red-400 tabular-nums">{masterStats ? `${masterStats.maxDrawdown.toFixed(2)}%` : '—'}</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-3 text-center backdrop-blur-sm">
+            <p className="text-[7px] font-black text-gray-500 uppercase mb-1.5 tracking-tighter">Status</p>
+            <p className="text-[10px] font-black text-blue-400">STANDBY</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1758,13 +1773,13 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
               <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h3 className="text-[9px] font-black tracking-widest uppercase text-gray-500">Sentiment</h3>
-                  <p className="text-[8px] font-bold text-blue-500 mt-0.5 uppercase">Neural Pulse</p>
+                  <h3 className="text-[9px] font-black tracking-widest uppercase text-gray-500">Strategy</h3>
+                  <p className="text-[8px] font-bold text-blue-500 mt-0.5 uppercase">Live Master EA</p>
                 </div>
                 <div className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded text-[8px] font-black text-blue-400">XAU</div>
               </div>
               <div className="h-[280px]">
-                <TradingViewAnalysisWidget analysis={analysis} />
+                <TradingViewAnalysisWidget activeSignal={activeSignal} masterStats={masterStats} />
               </div>
             </div>
 
