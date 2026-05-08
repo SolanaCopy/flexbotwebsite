@@ -3,8 +3,9 @@
 @tailwind utilities;
 
 @layer base {
-  body {
+  html, body {
     @apply bg-[#050505] text-white selection:bg-blue-500/30;
+    overflow-x: hidden;
   }
 
   /* Custom Scrollbar Styles */
