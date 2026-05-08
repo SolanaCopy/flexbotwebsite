@@ -2781,43 +2781,47 @@ const PaymentModal = ({ isOpen, step, onSelect, onConfirm, onClose, selectedPlan
 
             <button
               onClick={() => onSelect({ type: 'LIFETIME', price: '$500' })}
-              className="bg-white hover:shadow-blue-500/20 hover:shadow-2xl transition-all rounded-[28px] shadow-2xl w-full flex flex-col group relative overflow-hidden text-left"
+              className="relative w-full flex flex-col group rounded-[28px] overflow-hidden text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
             >
-              {/* Top accent bar */}
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500" />
+              {/* Layered backgrounds */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-600/[0.18] via-[#0a0a0a] to-[#080814]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_60%)]" />
+              <div className="absolute inset-0 border border-white/10 group-hover:border-blue-500/40 rounded-[28px] transition-colors" />
+              <div className="absolute -top-px left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent" />
 
               {/* Header */}
-              <div className="px-6 pt-7 pb-5 border-b border-gray-100">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-600 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest border border-blue-100">
+              <div className="relative px-6 pt-6 pb-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest border border-blue-500/20">
                     <Sparkles size={10} />
                     Official License
                   </div>
-                  <div className="bg-blue-600 text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">Save $200</div>
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-blue-500/30">Save $200</div>
                 </div>
-                <h4 className="text-2xl font-black text-black tracking-tighter uppercase mb-1">Lifetime License</h4>
+                <h4 className="text-2xl font-black text-white tracking-tighter uppercase mb-1">Lifetime License</h4>
                 <p className="text-[11px] font-medium text-gray-500">Full access to FlexBot AI Protocol V5.0</p>
               </div>
 
               {/* Pricing */}
-              <div className="px-6 py-5 border-b border-gray-100">
+              <div className="relative px-6 py-5 border-y border-white/5">
                 <div className="flex items-baseline gap-2.5">
-                  <span className="text-5xl font-black text-black tracking-tighter leading-none">$500</span>
-                  <span className="text-gray-300 text-base font-bold line-through">$700</span>
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-auto">One-time</span>
+                  <span className="text-5xl font-black bg-gradient-to-b from-white to-gray-300 bg-clip-text text-transparent tracking-tighter leading-none">$500</span>
+                  <span className="text-gray-600 text-base font-bold line-through">$700</span>
+                  <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-auto">One-time</span>
                 </div>
-                <div className="flex items-center gap-2 mt-3 px-3 py-2 bg-blue-50/50 border border-blue-100 rounded-xl">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
-                  <span className="text-[10px] font-bold text-gray-600">Then</span>
-                  <span className="text-sm font-black text-blue-600 tabular-nums">$30</span>
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">/ month for ongoing access</span>
+                <div className="flex items-center gap-2 mt-3 px-3 py-2 bg-white/[0.03] border border-white/10 rounded-xl">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.6)] shrink-0" />
+                  <span className="text-[10px] font-bold text-gray-500">Then</span>
+                  <span className="text-sm font-black text-blue-400 tabular-nums">$30</span>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">/ month — ongoing access</span>
                 </div>
               </div>
 
               {/* Features */}
-              <div className="px-6 py-5">
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">What's included</p>
-                <div className="grid grid-cols-2 gap-2">
+              <div className="relative px-6 py-5">
+                <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3">What's included</p>
+                <div className="grid grid-cols-2 gap-y-2.5 gap-x-3">
                   {[
                     "FlexBot AI V5.0 Core",
                     "Lifetime Protocol Access",
@@ -2825,20 +2829,21 @@ const PaymentModal = ({ isOpen, step, onSelect, onConfirm, onClose, selectedPlan
                     "24/7 Deployment Support"
                   ].map((feat, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-                        <Check size={10} className="text-blue-600" strokeWidth={3} />
+                      <div className="w-4 h-4 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center shrink-0">
+                        <Check size={10} className="text-blue-400" strokeWidth={3} />
                       </div>
-                      <span className="text-[10px] font-bold text-gray-600 leading-tight">{feat}</span>
+                      <span className="text-[10px] font-bold text-gray-300 leading-tight">{feat}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* CTA */}
-              <div className="px-6 pb-6">
-                <div className="w-full bg-black group-hover:bg-blue-600 text-white py-4 rounded-xl font-black text-xs transition-all shadow-lg uppercase tracking-widest flex items-center justify-center gap-2">
-                  Activate FlexBot AI
-                  <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              <div className="relative px-6 pb-6">
+                <div className="relative w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white py-4 rounded-xl font-black text-xs transition-all shadow-xl shadow-blue-500/20 uppercase tracking-widest flex items-center justify-center gap-2 overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                  <span className="relative">Activate FlexBot AI</span>
+                  <ArrowUpRight size={14} className="relative group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </div>
               </div>
             </button>
