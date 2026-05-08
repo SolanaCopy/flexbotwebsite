@@ -541,25 +541,26 @@ const BackgroundEffects = () => (
 );
 
 const Logo = ({ className = "" }) => (
-  <div className={`flex items-center gap-2 md:gap-3 group cursor-pointer ${className}`}>
+  <div className={`flex items-center gap-2.5 md:gap-3.5 group cursor-pointer ${className}`}>
     <div className="relative">
-      <div className="absolute inset-[-6px] bg-white/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-      <div className="relative w-8 h-8 md:w-12 md:h-12 flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
-        <img 
-          src="/FLEX.png" 
-          alt="FlexBot AI Logo" 
-          className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+      <div className="absolute inset-[-10px] bg-blue-500/20 blur-2xl rounded-full opacity-40 group-hover:opacity-100 transition-opacity duration-500"></div>
+      <div className="absolute inset-[-4px] bg-gradient-to-br from-blue-500/30 to-purple-500/30 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+      <div className="relative w-11 h-11 md:w-14 md:h-14 flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+        <img
+          src="/FLEX.png"
+          alt="FlexBot AI Logo"
+          className="w-full h-full object-contain drop-shadow-[0_0_20px_rgba(59,130,246,0.45)] group-hover:drop-shadow-[0_0_25px_rgba(59,130,246,0.7)] transition-all duration-500"
         />
       </div>
     </div>
     <div className="flex flex-col">
       <div className="flex items-baseline">
-        <span className="text-lg md:text-xl font-black tracking-tighter text-white">FlexBot</span>
-        <span className="text-lg md:text-xl font-black tracking-tighter text-blue-500 ml-0.5 md:ml-1">AI</span>
+        <span className="text-xl md:text-2xl font-black tracking-tighter bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent">FlexBot</span>
+        <span className="text-xl md:text-2xl font-black tracking-tighter bg-gradient-to-br from-blue-400 to-blue-600 bg-clip-text text-transparent ml-0.5 md:ml-1 drop-shadow-[0_0_12px_rgba(59,130,246,0.5)]">AI</span>
       </div>
-      <div className="flex items-center gap-1">
-        <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse"></div>
-        <span className="text-[6px] md:text-[7px] font-black text-blue-500/50 uppercase tracking-[0.3em] leading-none">Neural Protocol</span>
+      <div className="flex items-center gap-1.5">
+        <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse shadow-[0_0_6px_rgba(59,130,246,0.8)]"></div>
+        <span className="text-[7px] md:text-[8px] font-black text-blue-400/70 uppercase tracking-[0.3em] leading-none">Neural Protocol</span>
       </div>
     </div>
   </div>
@@ -1345,7 +1346,7 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
         if (sigData.ok) setActiveSignal(sigData.signal);
         if (tradesData.ok) {
           const START_BALANCE = 100000;
-          const LIVE_START_MS = new Date('2026-03-26T00:00:00Z').getTime();
+          const LIVE_START_MS = new Date('2026-05-08T00:00:00Z').getTime();
           const parseR = (r) => parseFloat(String(r).replace(/[^0-9.\-+]/g, '')) || 0;
           const trades = (tradesData.trades || []).filter(t =>
             t.result && t.outcome !== 'closed' && (t.closed_at || 0) >= LIVE_START_MS
