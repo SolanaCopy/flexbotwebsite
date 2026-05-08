@@ -1062,11 +1062,80 @@ const TradingViewAnalysisWidget = ({ activeSignal, masterStats }) => {
 // --- Page: Results ---
 const FLEXBOT_SERVER = 'https://flexbot-qpf2.onrender.com';
 
+const RiskGuardWidget = ({ compact = false }) => {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch(`${FLEXBOT_SERVER}/api/risk-status?symbol=XAUUSD`);
+        const j = await res.json();
+        if (j.ok) setData(j);
+      } catch (e) {
+        console.error('[RiskGuard]', e);
+      }
+    };
+    fetchStatus();
+    const i = setInterval(fetchStatus, 30000);
+    return () => clearInterval(i);
+  }, []);
+
+  const ddPct = data?.daily_dd_pct || 0;
+  const maxPct = data?.daily_dd_max_pct || 5;
+  const fillPct = Math.min(100, (ddPct / maxPct) * 100);
+  const status = data?.status || 'no_data';
+
+  const label = { safe: 'SAFE', warning: 'WARNING', halted: 'HALTED', no_data: 'WAITING' }[status];
+  const dotColor = status === 'halted' ? 'bg-red-500' : status === 'warning' ? 'bg-yellow-500' : status === 'safe' ? 'bg-green-500' : 'bg-gray-500';
+  const barColor = status === 'halted' ? 'bg-red-500' : status === 'warning' ? 'bg-yellow-500' : 'bg-green-500';
+  const badgeColors = status === 'halted' ? 'bg-red-500/10 text-red-500 border-red-500/20'
+    : status === 'warning' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+    : status === 'safe' ? 'bg-green-500/10 text-green-500 border-green-500/20'
+    : 'bg-gray-500/10 text-gray-500 border-gray-500/20';
+
+  return (
+    <div className={`bg-white/[0.03] border border-white/[0.05] rounded-2xl sm:rounded-3xl ${compact ? 'p-4' : 'p-4 sm:p-6'} relative overflow-hidden`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+            <Shield className="text-blue-500 w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm sm:text-base font-black text-white uppercase tracking-tighter leading-tight truncate">Risk Guard</h3>
+            <p className="text-[9px] sm:text-[10px] font-medium text-gray-500 truncate">Daily loss limit · {maxPct.toFixed(2)}%</p>
+          </div>
+        </div>
+        <div className={`px-2.5 py-1 rounded-full border ${badgeColors} flex items-center gap-1.5 shrink-0`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${dotColor} ${status === 'safe' ? 'animate-pulse' : ''}`}></div>
+          <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">{label}</span>
+        </div>
+      </div>
+
+      <div className="flex items-baseline justify-between mb-2">
+        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Daily Loss</span>
+        <span className="text-sm sm:text-base font-black tabular-nums">
+          <span className={ddPct > 0 ? 'text-red-400' : 'text-gray-400'}>{ddPct > 0 ? '−' : ''}{ddPct.toFixed(2)}%</span>
+          <span className="text-gray-600 text-xs font-bold"> / {maxPct.toFixed(2)}%</span>
+        </span>
+      </div>
+
+      <div className="relative w-full h-2 bg-white/5 rounded-full overflow-hidden">
+        <div className={`absolute inset-y-0 left-0 ${barColor} rounded-full transition-all duration-700`} style={{ width: `${fillPct}%` }}></div>
+      </div>
+
+      {!data?.has_day_data && (
+        <p className="text-[9px] font-medium text-gray-600 mt-3 italic">Waiting for live equity data from master EA…</p>
+      )}
+    </div>
+  );
+};
+
 const ResultsPage = () => {
   const [trades, setTrades] = useState([]);
   const [account, setAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [risk, setRisk] = useState(null);
 
   useEffect(() => {
     const fetchTrades = async () => {
@@ -1082,10 +1151,22 @@ const ResultsPage = () => {
       }
       setLoading(false);
     };
+    const fetchRisk = async () => {
+      try {
+        const res = await fetch(`${FLEXBOT_SERVER}/api/risk-status?symbol=XAUUSD`);
+        const data = await res.json();
+        if (data.ok) setRisk(data);
+      } catch (e) {
+        console.error('[Results] Failed to fetch risk:', e);
+      }
+    };
     fetchTrades();
-    const interval = setInterval(fetchTrades, 30000);
+    fetchRisk();
+    const interval = setInterval(() => { fetchTrades(); fetchRisk(); }, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const todayKey = new Date().toISOString().split('T')[0];
 
   const parseResult = (r) => {
     if (!r) return 0;
@@ -1228,12 +1309,19 @@ const ResultsPage = () => {
               <div className="w-8 h-8 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
               <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Connecting to Master MT5...</p>
             </div>
-          ) : weekTrades.length === 0 ? (
-            <div className="py-20 text-center">
-              <Activity size={32} className="text-gray-700 mx-auto mb-4" />
-              <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">No trades this week</p>
-            </div>
-          ) : (
+          ) : (() => {
+            // Always show today's card on current week (with risk bar even if no trades yet)
+            const showSyntheticToday = weekOffset === 0 && !sortedDays.includes(todayKey);
+            const displayDays = showSyntheticToday ? [todayKey, ...sortedDays] : sortedDays;
+            if (displayDays.length === 0) {
+              return (
+                <div className="py-20 text-center">
+                  <Activity size={32} className="text-gray-700 mx-auto mb-4" />
+                  <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">No trades this week</p>
+                </div>
+              );
+            }
+            return (
             <div className="space-y-4">
               {/* Headers */}
               <div className="hidden md:grid grid-cols-5 gap-4 px-6 pb-2 text-[10px] font-black text-gray-500 uppercase tracking-widest">
@@ -1245,8 +1333,8 @@ const ResultsPage = () => {
               </div>
 
               {/* Group by day */}
-              {sortedDays.map((dateKey, di) => {
-                const dayData = tradesByDay[dateKey];
+              {displayDays.map((dateKey, di) => {
+                const dayData = tradesByDay[dateKey] || { trades: [], totalProfit: 0 };
                 const dayProfit = dayData.totalProfit;
                 const dayWin = dayProfit >= 0;
                 const displayDate = new Date(dateKey).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -1269,7 +1357,7 @@ const ResultsPage = () => {
                           {dayData.trades.length}
                         </div>
                         <div>
-                          <p className="text-base sm:text-lg font-black text-white">{displayDate}</p>
+                          <p className="text-base sm:text-lg font-black text-white">{displayDate}{dateKey === todayKey && <span className="ml-2 text-[9px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded uppercase tracking-widest align-middle">Today</span>}</p>
                           <div className="flex items-center gap-2 mt-1">
                             {tpCount > 0 && <span className="text-[9px] font-black text-green-500 bg-green-500/10 px-2 py-0.5 rounded">{tpCount} TP</span>}
                             {slCount > 0 && <span className="text-[9px] font-black text-red-400 bg-red-500/10 px-2 py-0.5 rounded">{slCount} SL</span>}
@@ -1278,13 +1366,49 @@ const ResultsPage = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-4 sm:gap-6">
-                        <p className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight tabular-nums ${dayWin ? 'text-green-500' : 'text-red-400'}`}>
-                          {dayProfit !== 0 ? `${dayWin ? '+' : '-'}$${Math.abs(dayProfit).toFixed(2)}` : (tpCount > slCount ? 'WIN' : 'LOSS')}
+                        <p className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight tabular-nums ${dayData.trades.length === 0 ? 'text-gray-500' : dayWin ? 'text-green-500' : 'text-red-400'}`}>
+                          {dayData.trades.length === 0 ? '—' : dayProfit !== 0 ? `${dayWin ? '+' : '-'}$${Math.abs(dayProfit).toFixed(2)}` : (tpCount > slCount ? 'WIN' : 'LOSS')}
                         </p>
                       </div>
                     </div>
 
+                    {/* Risk Guard — only on today's card */}
+                    {dateKey === todayKey && risk && (() => {
+                      const ddPct = risk.daily_dd_pct || 0;
+                      const maxPct = risk.daily_dd_max_pct || 5;
+                      const fillPct = Math.min(100, (ddPct / maxPct) * 100);
+                      const status = risk.status || 'no_data';
+                      const label = { safe: 'SAFE', warning: 'WARNING', halted: 'HALTED', no_data: 'WAITING' }[status];
+                      const dotColor = status === 'halted' ? 'bg-red-500' : status === 'warning' ? 'bg-yellow-500' : status === 'safe' ? 'bg-green-500' : 'bg-gray-500';
+                      const barColor = status === 'halted' ? 'bg-red-500' : status === 'warning' ? 'bg-yellow-500' : 'bg-green-500';
+                      const txtColor = status === 'halted' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : status === 'safe' ? 'text-green-500' : 'text-gray-500';
+                      return (
+                        <div className="border-t border-white/5 px-4 sm:px-6 md:px-8 py-3 sm:py-4 bg-white/[0.015]">
+                          <div className="flex items-center justify-between gap-3 mb-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Shield size={12} className="text-blue-400 shrink-0" />
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">Daily Loss Limit</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-xs font-black tabular-nums">
+                                <span className={ddPct > 0 ? 'text-red-400' : 'text-gray-400'}>{ddPct > 0 ? '−' : ''}{ddPct.toFixed(2)}%</span>
+                                <span className="text-gray-600"> / {maxPct.toFixed(2)}%</span>
+                              </span>
+                              <span className={`flex items-center gap-1 ${txtColor}`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${dotColor} ${status === 'safe' ? 'animate-pulse' : ''}`}></div>
+                                <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
+                              </span>
+                            </div>
+                          </div>
+                          <div className="relative w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div className={`absolute inset-y-0 left-0 ${barColor} rounded-full transition-all duration-700`} style={{ width: `${fillPct}%` }}></div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {/* Individual trades table */}
+                    {dayData.trades.length > 0 && (
                     <div className="border-t border-white/5">
                       {dayData.trades.map((t, ti) => {
                         const isTP = t.outcome && t.outcome.toUpperCase().includes('TP');
@@ -1312,11 +1436,13 @@ const ResultsPage = () => {
                         );
                       })}
                     </div>
+                    )}
                   </motion.div>
                 );
               })}
             </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -2286,6 +2412,7 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
           </div>
         ) : (
           <div className="flex flex-col gap-10">
+            <RiskGuardWidget />
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-10">
               <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-[32px] p-4 sm:p-8 relative overflow-hidden group transition-all hover:bg-white/[0.07]">
                 <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Master Status</p>
