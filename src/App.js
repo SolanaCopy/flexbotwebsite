@@ -2771,44 +2771,44 @@ const PaymentModal = ({ isOpen, step, onSelect, onConfirm, onClose, selectedPlan
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xl">
-      <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-[#0a0a0a] border border-white/10 rounded-t-3xl sm:rounded-3xl w-full max-w-md overflow-y-auto max-h-[90vh] shadow-2xl relative p-5 sm:p-6 text-center">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors z-10"><X size={20} /></button>
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-[#0a0a0a] border border-white/10 rounded-t-3xl sm:rounded-[32px] w-full max-w-lg overflow-y-auto max-h-[92vh] shadow-2xl relative p-6 sm:p-8 text-center">
+        <button onClick={onClose} className="absolute top-5 right-5 text-gray-500 hover:text-white transition-colors z-10"><X size={22} /></button>
         {step === 'select' && (
           <>
-            <div className="w-11 h-11 bg-blue-600/10 rounded-xl flex items-center justify-center text-blue-500 mx-auto mb-3"><Cpu size={20} /></div>
-            <h3 className="text-xl font-black tracking-tighter mb-1.5 text-white uppercase">FlexBot AI Access</h3>
-            <p className="text-gray-500 text-xs mb-5 font-medium leading-relaxed">Select your lifetime license below.</p>
+            <div className="w-14 h-14 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-500 mx-auto mb-4"><Cpu size={26} /></div>
+            <h3 className="text-2xl font-black tracking-tighter mb-2 text-white uppercase">FlexBot AI Access</h3>
+            <p className="text-gray-400 text-sm mb-6 font-medium leading-relaxed">Select your lifetime license below.</p>
 
             <button
               onClick={() => onSelect({ type: 'LIFETIME', price: '$500' })}
-              className="bg-white hover:bg-gray-50 transition-all p-5 pt-7 rounded-2xl shadow-2xl w-full flex flex-col items-center group relative overflow-hidden"
+              className="bg-white hover:bg-gray-50 transition-all p-6 pt-8 rounded-[28px] shadow-2xl w-full flex flex-col items-center group relative overflow-hidden"
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-blue-600" />
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-blue-50 text-blue-600 text-[7px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest border border-blue-100 whitespace-nowrap">Official AI License</div>
+              <div className="absolute top-2.5 left-1/2 -translate-x-1/2 bg-blue-50 text-blue-600 text-[8px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-widest border border-blue-100 whitespace-nowrap">Official AI License</div>
 
-              <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">FlexBot AI Protocol — Lifetime</p>
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1.5">FlexBot AI Protocol — Lifetime</p>
 
-              <div className="flex items-baseline gap-2 mb-3">
-                <span className="text-3xl font-black text-black tracking-tighter">$500</span>
-                <span className="text-gray-300 text-xs font-bold line-through">$700</span>
-                <span className="text-[9px] font-black text-blue-600 ml-1">+ $30/mo</span>
+              <div className="flex items-baseline gap-2 mb-4">
+                <span className="text-4xl font-black text-black tracking-tighter">$500</span>
+                <span className="text-gray-300 text-sm font-bold line-through">$700</span>
+                <span className="text-[10px] font-black text-blue-600 ml-1">+ $30/mo</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-1.5 w-full mb-4">
+              <div className="grid grid-cols-2 gap-2 w-full mb-5">
                 {[
                   "FlexBot AI V5.0 Core",
                   "Lifetime Protocol Access",
                   "MT5 Signal Bridge",
                   "24/7 Deployment Support"
                 ].map((feat, i) => (
-                  <div key={i} className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-50 rounded-lg border border-gray-100/50">
-                    <div className="w-1 h-1 rounded-full bg-blue-600 shrink-0" />
-                    <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wide text-left leading-tight">{feat}</span>
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100/50">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
+                    <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide text-left leading-tight">{feat}</span>
                   </div>
                 ))}
               </div>
 
-              <div className="w-full bg-black group-hover:bg-blue-600 text-white py-3 rounded-xl font-black text-[10px] transition-all shadow-lg uppercase tracking-widest">
+              <div className="w-full bg-black group-hover:bg-blue-600 text-white py-3.5 rounded-xl font-black text-[11px] transition-all shadow-lg uppercase tracking-widest">
                 Activate FlexBot AI
               </div>
             </button>
