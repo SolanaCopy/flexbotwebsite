@@ -5,7 +5,7 @@ import {
   Wallet, TrendingUp, Shield, Cpu, Activity, DollarSign, 
   LayoutDashboard, Home, ArrowUpRight, ArrowDownLeft, 
   Settings, LogOut, PieChart, Clock, Zap, X, Copy, Download, TrendingDown,
-  ChevronLeft, ChevronRight, AlertTriangle
+  ChevronLeft, ChevronRight, AlertTriangle, Check, Sparkles
 } from 'lucide-react';
 import { metaApiService } from './services/metaApi';
 
@@ -2781,35 +2781,65 @@ const PaymentModal = ({ isOpen, step, onSelect, onConfirm, onClose, selectedPlan
 
             <button
               onClick={() => onSelect({ type: 'LIFETIME', price: '$500' })}
-              className="bg-white hover:bg-gray-50 transition-all p-6 pt-8 rounded-[28px] shadow-2xl w-full flex flex-col items-center group relative overflow-hidden"
+              className="bg-white hover:shadow-blue-500/20 hover:shadow-2xl transition-all rounded-[28px] shadow-2xl w-full flex flex-col group relative overflow-hidden text-left"
             >
-              <div className="absolute top-0 left-0 w-full h-1 bg-blue-600" />
-              <div className="absolute top-2.5 left-1/2 -translate-x-1/2 bg-blue-50 text-blue-600 text-[8px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-widest border border-blue-100 whitespace-nowrap">Official AI License</div>
+              {/* Top accent bar */}
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500" />
 
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1.5">FlexBot AI Protocol — Lifetime</p>
-
-              <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-4xl font-black text-black tracking-tighter">$500</span>
-                <span className="text-gray-300 text-sm font-bold line-through">$700</span>
-                <span className="text-[10px] font-black text-blue-600 ml-1">+ $30/mo</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 w-full mb-5">
-                {[
-                  "FlexBot AI V5.0 Core",
-                  "Lifetime Protocol Access",
-                  "MT5 Signal Bridge",
-                  "24/7 Deployment Support"
-                ].map((feat, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100/50">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
-                    <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide text-left leading-tight">{feat}</span>
+              {/* Header */}
+              <div className="px-6 pt-7 pb-5 border-b border-gray-100">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-600 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest border border-blue-100">
+                    <Sparkles size={10} />
+                    Official License
                   </div>
-                ))}
+                  <div className="bg-blue-600 text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">Save $200</div>
+                </div>
+                <h4 className="text-2xl font-black text-black tracking-tighter uppercase mb-1">Lifetime License</h4>
+                <p className="text-[11px] font-medium text-gray-500">Full access to FlexBot AI Protocol V5.0</p>
               </div>
 
-              <div className="w-full bg-black group-hover:bg-blue-600 text-white py-3.5 rounded-xl font-black text-[11px] transition-all shadow-lg uppercase tracking-widest">
-                Activate FlexBot AI
+              {/* Pricing */}
+              <div className="px-6 py-5 border-b border-gray-100">
+                <div className="flex items-baseline gap-2.5">
+                  <span className="text-5xl font-black text-black tracking-tighter leading-none">$500</span>
+                  <span className="text-gray-300 text-base font-bold line-through">$700</span>
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-auto">One-time</span>
+                </div>
+                <div className="flex items-center gap-2 mt-3 px-3 py-2 bg-blue-50/50 border border-blue-100 rounded-xl">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
+                  <span className="text-[10px] font-bold text-gray-600">Then</span>
+                  <span className="text-sm font-black text-blue-600 tabular-nums">$30</span>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">/ month for ongoing access</span>
+                </div>
+              </div>
+
+              {/* Features */}
+              <div className="px-6 py-5">
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">What's included</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    "FlexBot AI V5.0 Core",
+                    "Lifetime Protocol Access",
+                    "MT5 Signal Bridge",
+                    "24/7 Deployment Support"
+                  ].map((feat, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                        <Check size={10} className="text-blue-600" strokeWidth={3} />
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-600 leading-tight">{feat}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* CTA */}
+              <div className="px-6 pb-6">
+                <div className="w-full bg-black group-hover:bg-blue-600 text-white py-4 rounded-xl font-black text-xs transition-all shadow-lg uppercase tracking-widest flex items-center justify-center gap-2">
+                  Activate FlexBot AI
+                  <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </div>
               </div>
             </button>
           </>
