@@ -3235,7 +3235,7 @@ function App() {
           <Route path="/leaderboard" element={<LeaderboardPage />} />
         </Routes>
         <Routes>
-          <Route path="/" element={<footer className="container mx-auto px-4 sm:px-6 py-10 sm:py-20 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-10 border-t border-white/5"><Logo /><p className="text-xs font-bold text-gray-600 tracking-widest uppercase">&copy; 2026 All Rights Reserved.</p><div className="flex gap-6 text-xs font-black text-gray-500 uppercase tracking-widest"><a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Twitter</a><a href="https://t.me/flexbotcommunity" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Telegram</a><a href="https://docs.flexbot.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Docs</a></div></footer>} />
+          <Route path="/" element={<footer className="container mx-auto px-4 sm:px-6 py-10 sm:py-20 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-10 border-t border-white/5"><Logo /><p className="text-xs font-bold text-gray-600 tracking-widest uppercase">&copy; 2026 All Rights Reserved.</p><div className="flex gap-6 text-xs font-black text-gray-500 uppercase tracking-widest"><a href="https://t.me/flexbotcommunity" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Telegram</a></div></footer>} />
           <Route path="*" element={null} />
         </Routes>
       </div>
