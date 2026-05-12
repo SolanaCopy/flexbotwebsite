@@ -5,7 +5,7 @@ import {
   Wallet, TrendingUp, Shield, Cpu, Activity, DollarSign, 
   LayoutDashboard, Home, ArrowUpRight, ArrowDownLeft, 
   Settings, LogOut, PieChart, Clock, Zap, X, Copy, Download, TrendingDown,
-  ChevronLeft, ChevronRight, AlertTriangle, Check, Sparkles
+  ChevronLeft, ChevronRight, AlertTriangle, Check, Sparkles, Lock, Award
 } from 'lucide-react';
 import { metaApiService } from './services/metaApi';
 
@@ -665,6 +665,8 @@ const Navbar = ({ onBuyClick }) => {
             <div className="w-px h-4 bg-white/10"></div>
             <Link to="/results" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Live Results</Link>
             <div className="w-px h-4 bg-white/10"></div>
+            <Link to="/myfxbook" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Myfxbook</Link>
+            <div className="w-px h-4 bg-white/10"></div>
             <Link to="/how-it-works" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">How It Works</Link>
           </div>
         )}
@@ -698,6 +700,7 @@ const Navbar = ({ onBuyClick }) => {
             <div className="flex flex-col gap-2">
               <Link to="/dashboard" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Terminal</Link>
               <Link to="/results" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Live Results</Link>
+              <Link to="/myfxbook" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Myfxbook</Link>
               <Link to="/how-it-works" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">How It Works</Link>
             </div>
           </motion.div>
@@ -1456,6 +1459,141 @@ const ResultsPage = () => {
             </div>
             );
           })()}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Page: Myfxbook Audit ---
+const MYFXBOOK_PHASES = [
+  {
+    id: 'phase1',
+    label: 'Phase 1',
+    fullLabel: 'Phase 1 — Challenge',
+    status: 'active',
+    target: '+8% profit · 30 day limit',
+    description: "First evaluation phase of the FTMO Challenge. FlexBot's live execution is being tracked and independently audited on Myfxbook.",
+    url: 'https://www.myfxbook.com/members/FlexbotAI/flexbot-ftmo-challenge-phase-1/12038475',
+  },
+  {
+    id: 'phase2',
+    label: 'Phase 2',
+    fullLabel: 'Phase 2 — Verification',
+    status: 'locked',
+    target: '+5% profit · 60 day limit',
+    description: 'Unlocks once Phase 1 is passed. The verification account audit will appear here automatically.',
+    url: null,
+  },
+  {
+    id: 'funded',
+    label: 'Funded',
+    fullLabel: 'Funded Account',
+    status: 'locked',
+    target: 'Live capital · real payouts',
+    description: 'Unlocks once Phase 2 is passed. The real-money funded account where FlexBot trades for verified payouts.',
+    url: null,
+  },
+];
+
+const MyfxbookPage = () => {
+  const [activePhase, setActivePhase] = useState('phase1');
+  const phase = MYFXBOOK_PHASES.find(p => p.id === activePhase) || MYFXBOOK_PHASES[0];
+  const isLocked = phase.status === 'locked';
+
+  return (
+    <div className="relative min-h-screen pt-12 sm:pt-24 pb-12 sm:pb-20">
+      <div className="absolute inset-0 bg-blue-600/[0.02] pointer-events-none"></div>
+      <div className="container mx-auto px-4 sm:px-6 relative z-10">
+        {/* Hero */}
+        <div className="text-center mb-10 sm:mb-16">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/5 border border-blue-500/10 text-blue-400 text-[10px] font-black uppercase tracking-widest mb-6">
+            <Award className="w-3 h-3" /> FTMO Challenge — Verified Audit
+          </div>
+          <h1 className="text-3xl sm:text-5xl md:text-7xl font-black tracking-tighter mb-4 text-white uppercase">
+            Myfxbook <span className="text-gray-500">Audit</span>
+          </h1>
+          <p className="text-gray-400 max-w-2xl mx-auto font-medium leading-relaxed">
+            Independently verified prop-firm progression. Every trade is auditable on Myfxbook — no edits, no hiding.
+          </p>
+        </div>
+
+        {/* Phase Tabs */}
+        <div className="max-w-4xl mx-auto mb-6 flex bg-white/5 border border-white/10 p-1 rounded-full">
+          {MYFXBOOK_PHASES.map(p => {
+            const isActive = p.id === activePhase;
+            const locked = p.status === 'locked';
+            return (
+              <button
+                key={p.id}
+                onClick={() => setActivePhase(p.id)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 sm:px-3 rounded-full text-[9px] sm:text-[11px] font-black uppercase tracking-[0.18em] transition-all ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {locked && <Lock size={9} className="opacity-60" />}
+                <span className="truncate">{p.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Phase Card */}
+        <div className="max-w-4xl mx-auto bg-white/[0.02] border border-white/[0.05] rounded-2xl sm:rounded-[48px] p-6 sm:p-10 md:p-14 overflow-hidden relative shadow-2xl">
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/[0.03] blur-[150px] rounded-full -z-10 animate-pulse pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-green-500/[0.02] blur-[150px] rounded-full -z-10 pointer-events-none"></div>
+
+          {isLocked ? (
+            <div className="py-8 sm:py-14 flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
+                <Lock size={22} className="text-gray-500" />
+              </div>
+              <h2 className="text-xl sm:text-3xl font-black uppercase tracking-tighter text-white mb-3">{phase.fullLabel}</h2>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/5 border border-yellow-500/10 text-yellow-400 text-[9px] font-black uppercase tracking-widest mb-6">
+                <Lock size={9} /> Locked
+              </div>
+              <p className="text-gray-400 max-w-md font-medium text-sm leading-relaxed mb-5">
+                {phase.description}
+              </p>
+              <p className="text-gray-600 text-[10px] font-black uppercase tracking-widest">Target: {phase.target}</p>
+            </div>
+          ) : (
+            <>
+              {/* Phase header */}
+              <div className="border-b border-white/5 pb-5 sm:pb-6 mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                    <Award className="text-blue-500 w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-lg sm:text-2xl font-black uppercase tracking-tighter text-white truncate">{phase.fullLabel}</h2>
+                    <p className="text-gray-500 font-medium text-[10px] sm:text-xs truncate">FTMO · {phase.target}</p>
+                  </div>
+                </div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/5 border border-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-widest self-start sm:self-auto shrink-0">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Live
+                </div>
+              </div>
+
+              <p className="text-gray-400 text-sm leading-relaxed mb-8">{phase.description}</p>
+
+              <a
+                href={phase.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center justify-center gap-3 w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] text-[11px] sm:text-xs py-4 sm:py-5 rounded-2xl transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
+              >
+                View Full Audit on Myfxbook
+                <ArrowUpRight size={16} className="group-hover:rotate-45 transition-transform" />
+              </a>
+
+              <p className="text-center text-gray-600 text-[9px] font-black uppercase tracking-widest mt-4">
+                Live data hosted on Myfxbook · independently verified
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -2951,6 +3089,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard tradingLogs={tradingLogs} onBuyClick={() => setShowPaymentModal(true)} />} />
           <Route path="/how-it-works" element={<ContractPage onBuyClick={() => setShowPaymentModal(true)} />} />
           <Route path="/results" element={<ResultsPage />} />
+          <Route path="/myfxbook" element={<MyfxbookPage />} />
         </Routes>
         <Routes>
           <Route path="/" element={<footer className="container mx-auto px-4 sm:px-6 py-10 sm:py-20 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-10 border-t border-white/5"><Logo /><p className="text-xs font-bold text-gray-600 tracking-widest uppercase">&copy; 2026 All Rights Reserved.</p><div className="flex gap-6 text-xs font-black text-gray-500 uppercase tracking-widest"><a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Twitter</a><a href="https://t.me/flexbotcommunity" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Telegram</a><a href="https://docs.flexbot.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Docs</a></div></footer>} />
