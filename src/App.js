@@ -714,98 +714,283 @@ const Navbar = ({ onBuyClick }) => {
 };
 
 // --- Page: Landing ---
-const LandingPage = ({ onBuyClick, tradingLogs }) => {
+const LANDING_STATS = [
+  { val: '79%', lbl: 'Win Rate' },
+  { val: '+702%', lbl: '24m Return' },
+  { val: '4%', lbl: 'Max DD' },
+  { val: '5.65', lbl: 'Profit Factor' },
+];
+
+const LANDING_STEPS = [
+  { num: 1, title: 'Install the EA', desc: 'Download your personal installer — one click runs setup, copies the EA into MT5, and pre-fills your license. About 2 minutes.' },
+  { num: 2, title: 'Drop it on XAUUSD', desc: 'Drag the EA onto a gold chart. Load the preset (also pre-filled). Enable AutoTrading. The bot is now watching the market 24/5.' },
+  { num: 3, title: 'Trades fire automatically', desc: 'Signals execute on your account in sync with the master. SL/TP changes propagate live within 5 seconds. Daily-loss circuit breaker built-in.' },
+];
+
+const LANDING_PLAN_FEATURES = [
+  'Full Flexbot EA installation',
+  'Live trading signals on XAUUSD',
+  'Auto SL/TP sync from master',
+  'Daily-loss circuit breaker',
+  'Telegram community + support',
+  'Monthly referral leaderboard access',
+];
+
+const LANDING_FAQ = [
+  { q: 'What broker do I need?', a: 'Any MT5 broker with XAUUSD (Gold) access. FTMO, Vantage, and most prop firms work. The EA installs on your existing MT5 — no broker switch needed.' },
+  { q: 'How fast do trades open on my account?', a: 'The EA polls every 30 seconds. When the master opens a trade, your account opens within ~30 seconds. SL/TP modifications sync within 5 seconds via our live-mod feature.' },
+  { q: 'Can I run this on an FTMO challenge?', a: 'Yes — the strategy is built for FTMO. 4% daily-loss circuit breaker, 0.5–1% risk per trade, never breaches the 10% max-loss rule. Currently running live on a $100k FTMO Phase 1 challenge.' },
+  { q: "What's the referral program?", a: 'Every member gets a unique invite link. Bring trading friends in — the top inviter at the end of each month wins 30 days free. Use /myref in the community group to get your link.' },
+  { q: 'How do I cancel?', a: 'Just skip the monthly renewal. Access stops at end of paid period. No long-term commitment.' },
+];
+
+const LandingPage = ({ onBuyClick }) => {
+  const [refCode, setRefCode] = useState(null);
+  const [inviter, setInviter] = useState(null);
+  const [board, setBoard] = useState([]);
+  const [boardLoading, setBoardLoading] = useState(true);
+
+  // Referral banner: pick up ?ref= and try to resolve to a display name
+  useEffect(() => {
+    try {
+      const ref = new URLSearchParams(window.location.search).get('ref');
+      if (!ref) return;
+      setRefCode(ref);
+      try { window.localStorage.setItem('flexbot_ref', ref); } catch (e) {}
+      fetch(`${FLEXBOT_SERVER}/api/leaderboard`)
+        .then(r => r.json())
+        .then(data => {
+          const entry = (data.leaderboard || []).find(e => e.code === ref);
+          if (entry && entry.name) setInviter(entry.name);
+        })
+        .catch(() => {});
+    } catch (e) {}
+  }, []);
+
+  // Leaderboard fetcher (30s refresh)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const r = await fetch(`${FLEXBOT_SERVER}/api/leaderboard`, { cache: 'no-store' });
+        const data = await r.json();
+        if (data.ok) setBoard(data.leaderboard || []);
+      } catch (e) {
+        console.error('[Landing leaderboard]', e);
+      } finally {
+        setBoardLoading(false);
+      }
+    };
+    load();
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  const now = new Date();
+  const monthName = now.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const daysLeft = Math.max(0, Math.ceil((nextMonth - now) / (24 * 3600 * 1000)));
+  const medals = ['🥇', '🥈', '🥉'];
+
+  const rankNameColor = (rank) => {
+    if (rank === 1) return 'text-yellow-400 font-bold';
+    if (rank === 2) return 'text-gray-300 font-semibold';
+    if (rank === 3) return 'text-amber-600 font-semibold';
+    return '';
+  };
+
+  const escapeName = (n) => String(n || 'Anonymous');
+
   return (
     <div className="relative">
-      <header className="relative w-full lg:h-[calc(100vh-60px)] flex flex-col items-center justify-center overflow-visible">
-        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-blue-900/5 to-transparent"></div>
-          <div className="absolute top-[-20%] left-[-20%] w-[140%] h-[140%] bg-blue-600/[0.05] blur-[150px] rounded-full animate-pulse"></div>
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.04] mix-blend-overlay"></div>
-          <svg className="absolute bottom-0 left-0 w-full h-[60%] opacity-20" viewBox="0 0 1440 400">
-            <motion.path initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 1 }} transition={{ duration: 3, ease: "easeInOut" }} d="M0,320 L120,280 L240,340 L360,200 L480,260 L600,140 L720,220 L840,80 L960,160 L1080,40 L1200,100 L1320,20 L1440,60" fill="none" stroke="url(#gradient-line)" strokeWidth="4" />
-            <defs><linearGradient id="gradient-line" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#2563eb" /><stop offset="100%" stopColor="#06b6d4" /></linearGradient></defs>
-          </svg>
-          <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent"></div>
+      {/* Referral welcome banner */}
+      {refCode && (
+        <div className="bg-gradient-to-r from-yellow-400 to-amber-500 text-zinc-900 py-3 px-4 text-center text-sm font-semibold">
+          🎯 You were invited by <strong>{inviter || 'a FlexBot member'}</strong> — welcome! Reach out via Telegram to get started.
         </div>
-        <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-0 relative z-10">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-6 max-w-7xl mx-auto">
-            {/* Left Column - Text */}
-            <motion.div
-               initial={{ opacity: 0, x: -50 }}
-               animate={{ opacity: 1, x: 0 }}
-               transition={{ duration: 1 }}
-               className="flex-1 text-center lg:text-left flex flex-col items-center lg:items-start"
-            >
-              <div className="inline-flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 mb-3 lg:mb-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] lg:text-xs font-bold"><div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>V5.0 NEURAL NETWORK</div>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-gray-400 text-[10px] lg:text-xs font-bold uppercase tracking-widest leading-none"><Zap size={14} className="text-blue-500" />Gold Specialized</div>
+      )}
+
+      {/* Hero */}
+      <section
+        className="relative text-center py-20 sm:py-24 px-4"
+        style={{ background: 'radial-gradient(ellipse at top, rgba(251,191,36,0.06), transparent 60%)' }}
+      >
+        <div className="max-w-4xl mx-auto relative z-10">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-500 text-[11px] font-bold uppercase tracking-widest mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> LIVE on FTMO Phase 1
+            </div>
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tighter leading-[1.05] mb-5 bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent">
+              Automated{' '}
+              <span style={{ color: '#fbbf24', WebkitTextFillColor: '#fbbf24' }}>XAUUSD</span>
+              <br />Gold Trading
+            </h1>
+            <p className="text-base sm:text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+              An MT5 Expert Advisor with 24 months of backtested performance. FTMO-compliant, fully automated, live signals — set it up in 2 minutes.
+            </p>
+            <div className="flex gap-3 justify-center flex-wrap">
+              <button
+                onClick={onBuyClick}
+                className="bg-yellow-400 hover:bg-yellow-300 text-zinc-900 px-7 py-3.5 rounded-xl font-bold text-base transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(251,191,36,0.25)]"
+              >
+                Get Access — 500 USDC
+              </button>
+              <a
+                href="#how"
+                className="bg-transparent text-white border border-white/15 px-7 py-3.5 rounded-xl font-semibold text-base hover:bg-white/5 transition-all"
+              >
+                How it works
+              </a>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Stats */}
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-12 border-y border-white/10">
+          {LANDING_STATS.map(s => (
+            <div key={s.lbl} className="text-center p-2">
+              <div className="text-4xl sm:text-5xl font-extrabold tracking-tighter mb-1.5 bg-gradient-to-br from-yellow-400 to-amber-500 bg-clip-text text-transparent">
+                {s.val}
               </div>
+              <div className="text-[11px] sm:text-xs text-gray-500 uppercase tracking-widest">{s.lbl}</div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[2.75rem] xl:text-5xl 2xl:text-7xl font-black mb-2 sm:mb-3 lg:mb-3 leading-[1.05] tracking-tight uppercase">Gold <br /><span className="text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">FlexBot AI</span></h1>
-              <p className="text-gray-400 text-sm sm:text-base lg:text-sm xl:text-base max-w-xl mx-auto lg:mx-0 mb-4 sm:mb-6 lg:mb-5 leading-relaxed font-medium">Get the <span className="text-white font-black">Flexbot Expert Advisor</span>. Institutional-grade gold trading software copied directly to <span className="text-white font-bold">your own broker account</span>.</p>
-
-              <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start w-full sm:w-auto relative">
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 sm:left-auto sm:right-[-40px] sm:translate-x-0 rotate-12 z-20">
-                  <div className="bg-blue-600 text-white text-[9px] font-black px-3 py-1 rounded-lg shadow-xl flex flex-col items-center border border-white/20">
-                    <span>$500 LIFETIME</span>
-                    <span className="text-[6px] mt-0.5 opacity-70">LIMITED SLOTS</span>
-                  </div>
-                </div>
-                <button onClick={onBuyClick} className="bg-blue-600 hover:bg-blue-500 text-white px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl font-black text-sm sm:text-base transition-all shadow-[0_10px_50px_rgba(37,99,235,0.4)] hover:-translate-y-1 group flex items-center justify-center gap-3">GET FLEXBOT AI <ArrowUpRight className="group-hover:translate-x-1 transition-transform" size={18} /></button>
-                <a href="#how-it-works" className="bg-white/5 hover:bg-white/10 border border-white/10 px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl font-black text-sm sm:text-base transition-all backdrop-blur-md flex items-center justify-center">HOW IT WORKS</a>
+      {/* How it works */}
+      <section id="how" className="py-16 sm:py-20 px-4 sm:px-6">
+        <div className="container mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-3">How it works</h2>
+          <p className="text-gray-400 text-center text-base mb-12 max-w-xl mx-auto">Three steps. No coding. No babysitting charts.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+            {LANDING_STEPS.map(s => (
+              <div key={s.num} className="bg-[#15151a] border border-white/10 rounded-2xl p-7">
+                <div className="w-9 h-9 bg-yellow-400/15 text-yellow-400 rounded-full flex items-center justify-center font-extrabold mb-4">{s.num}</div>
+                <h3 className="text-lg font-bold mb-2">{s.title}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed">{s.desc}</p>
               </div>
-            </motion.div>
-
-            {/* Right Column - Astronaut */}
-            <motion.div
-               initial={{ opacity: 0, x: 50 }}
-               animate={{ opacity: 1, x: 0 }}
-               transition={{ duration: 1, delay: 0.2 }}
-               className="flex-1 relative w-full max-w-[320px] sm:max-w-[400px] lg:max-w-[380px] xl:max-w-[450px] 2xl:max-w-[550px] flex justify-center items-center pointer-events-none mt-4 lg:mt-0"
-            >
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-blue-600/10 blur-[130px] rounded-full -z-10 animate-pulse"></div>
-               <motion.img
-                  initial={{ y: 0 }}
-                  animate={{ y: [-15, 15, -15] }}
-                  transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                  src="/photo_2026-04-04_12-16-05.jpg"
-                  alt="FlexBot FTMO Astronaut"
-                  className="w-full h-auto object-contain mix-blend-lighten contrast-[1.2] opacity-100 drop-shadow-2xl"
-                  style={{ maskImage: 'radial-gradient(ellipse at center, black 45%, transparent 75%)', WebkitMaskImage: 'radial-gradient(ellipse at center, black 45%, transparent 75%)' }}
-               />
-            </motion.div>
+            ))}
           </div>
         </div>
-      </header>
-      
-      {/* Decorative Section Divider */}
-      <div className="relative h-px w-full max-w-6xl mx-auto">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-blue-500/10 blur-xl rounded-full"></div>
-      </div>
-      
-      <PerformanceSection />
-      <SectionDivider />
-      
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-blue-600/[0.01] pointer-events-none"></div>
-        <HowItWorks />
-      </div>
-      
-      <SectionDivider />
-      <FeaturesSection />
-      
-      <SectionDivider />
-      <TelegramSection />
-      
-      <SectionDivider />
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-blue-600/[0.01] pointer-events-none"></div>
-        <FAQSection />
-      </div>
+      </section>
 
-      <RiskDisclaimer />
+      {/* Leaderboard inline */}
+      <section className="bg-[#0f0f12] py-16 sm:py-20 px-4 sm:px-6" id="leaderboard">
+        <div className="container mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-3">🏆 Referral Leaderboard</h2>
+          <p className="text-gray-400 text-center text-base mb-12 max-w-xl mx-auto">Members invite friends — top inviter each month wins a free month. Live standings:</p>
+
+          <div className="max-w-2xl mx-auto bg-[#15151a] border border-white/10 rounded-2xl overflow-hidden">
+            <div className="flex justify-between items-center py-4 px-6 border-b border-white/10">
+              <div className="font-bold">{monthName}</div>
+              <div className="text-gray-500 text-sm">{daysLeft} day{daysLeft === 1 ? '' : 's'} left</div>
+            </div>
+            <table className="w-full text-base">
+              <tbody>
+                {boardLoading ? (
+                  <tr><td colSpan="3" className="text-center py-12 text-gray-500 text-sm">Loading…</td></tr>
+                ) : board.length === 0 ? (
+                  <tr><td colSpan="3" className="text-center py-12 text-gray-500 text-sm">No invites yet this month — be the first 🚀</td></tr>
+                ) : board.slice(0, 10).map((entry, i, arr) => {
+                  const rank = entry.rank || (i + 1);
+                  const isTop3 = rank <= 3;
+                  const isLast = i === arr.length - 1;
+                  return (
+                    <tr key={`${entry.name || ''}-${i}`} className={isLast ? '' : 'border-b border-white/10'}>
+                      <td className="py-3 px-6 text-2xl font-bold w-16">
+                        {isTop3 ? medals[rank - 1] : <span className="text-gray-500 text-base">{rank}</span>}
+                      </td>
+                      <td className={`py-3 px-6 ${rankNameColor(rank)}`}>{escapeName(entry.name)}</td>
+                      <td className="py-3 px-6 text-right font-bold tabular-nums w-24">{entry.invites || 0}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="max-w-2xl mx-auto mt-6 bg-gradient-to-br from-yellow-400/[0.12] to-yellow-400/[0.04] border border-yellow-400/30 rounded-2xl p-6 text-center">
+            <div className="text-yellow-400 text-xs uppercase tracking-widest font-bold mb-2">🎁 Monthly Prize</div>
+            <div className="text-gray-200 text-base leading-relaxed">
+              #1 at the end of the month wins <b>+30 days free</b> on their FlexBot license.<br />
+              Auto-applied. Announced in the community group.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="py-16 sm:py-20 px-4 sm:px-6">
+        <div className="container mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-3">Pricing</h2>
+          <p className="text-gray-400 text-center text-base mb-12 max-w-xl mx-auto">One simple plan. Cancel anytime.</p>
+
+          <div className="max-w-md mx-auto bg-gradient-to-br from-[#1a1a20] to-[#15151a] border border-white/10 rounded-2xl p-9 sm:p-10 text-center relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-zinc-900 px-3.5 py-1.5 rounded-full text-[11px] font-extrabold uppercase tracking-widest">
+              FLEXBOT PRO
+            </div>
+            <div className="text-gray-400 text-base font-semibold mb-4 mt-2">Setup + Monthly Access</div>
+            <div className="text-5xl sm:text-6xl font-extrabold tracking-tighter">
+              <span className="text-yellow-400">$500</span>
+            </div>
+            <div className="text-gray-500 my-2 text-sm">one-time setup · then $30/month</div>
+
+            <ul className="text-left list-none p-0 mt-6 mb-7">
+              {LANDING_PLAN_FEATURES.map((f, i, arr) => (
+                <li key={i} className={`py-2.5 text-[15px] ${i !== arr.length - 1 ? 'border-b border-white/10' : ''}`}>
+                  <span className="text-green-500 font-bold mr-1.5">✓</span>{f}
+                </li>
+              ))}
+            </ul>
+
+            <div className="space-y-3">
+              <button
+                onClick={onBuyClick}
+                className="block w-full bg-yellow-400 hover:bg-yellow-300 text-zinc-900 py-3.5 rounded-xl font-bold transition-all hover:-translate-y-0.5"
+              >
+                Pay with USDT
+              </button>
+              <a
+                href="https://t.me/Flexbotaiclaudebot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full bg-transparent text-white border border-white/15 hover:bg-white/5 py-3.5 rounded-xl font-semibold transition-all"
+              >
+                DM on Telegram →
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="bg-[#0f0f12] py-16 sm:py-20 px-4 sm:px-6">
+        <div className="container mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-3">FAQ</h2>
+          <p className="text-gray-400 text-center text-base mb-12 max-w-xl mx-auto">Quick answers to common questions.</p>
+          <div className="max-w-3xl mx-auto space-y-2.5">
+            {LANDING_FAQ.map((item, i) => (
+              <details key={i} className="group bg-[#15151a] border border-white/10 rounded-xl px-5 py-4 cursor-pointer">
+                <summary className="font-semibold text-base flex justify-between items-center list-none [&::-webkit-details-marker]:hidden">
+                  <span>{item.q}</span>
+                  <span className="text-yellow-400 text-2xl leading-none transition-transform group-open:rotate-45">+</span>
+                </summary>
+                <p className="text-gray-400 text-sm leading-relaxed mt-3">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Disclaimer footer */}
+      <div className="border-t border-white/10 py-10 px-4 text-center text-gray-500 text-sm">
+        <div>FLEXBOT · Automated XAUUSD trading</div>
+        <p className="text-xs max-w-xl mx-auto mt-3 leading-relaxed">
+          Past performance is not indicative of future results. Trading involves substantial risk of loss and is not suitable for all investors. Backtest results assume idealised execution.
+        </p>
+      </div>
     </div>
   );
 };
@@ -3272,10 +3457,7 @@ function App() {
           <Route path="/myfxbook" element={<MyfxbookPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
         </Routes>
-        <Routes>
-          <Route path="/" element={<footer className="container mx-auto px-4 sm:px-6 py-10 sm:py-20 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-10 border-t border-white/5"><Logo /><p className="text-xs font-bold text-gray-600 tracking-widest uppercase">&copy; 2026 All Rights Reserved.</p><div className="flex gap-6 text-xs font-black text-gray-500 uppercase tracking-widest"><a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Twitter</a><a href="https://t.me/flexbotcommunity" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Telegram</a><a href="https://docs.flexbot.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Docs</a></div></footer>} />
-          <Route path="*" element={null} />
-        </Routes>
+        {/* Footer removed — LandingPage owns its own footer/disclaimer; other pages render none. */}
       </div>
     </div>
   );
