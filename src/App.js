@@ -1199,13 +1199,24 @@ const ResultsPage = () => {
 
   // Only show trades from the currently active master account (backend may still hold history from previous accounts).
   // Legacy IDs use the `m-{login}-{tradeId}` format — filter those by login. Newer IDs (e.g. `admin-...`) lack the
-  // login segment and are accepted as-is. Also drop simulation/admin test trades.
+  // login segment and are accepted as-is. Also drop simulation/admin test trades, and dedupe by trade id —
+  // the backend currently pushes the same trade multiple times with slightly different entry prices.
   const accountLogin = account?.login ? String(account.login) : null;
-  const myTrades = trades.filter(t => {
+  const filtered = trades.filter(t => {
     const id = String(t.id || '');
+    const outcome = String(t.outcome || '');
     if (id.startsWith('m-') && accountLogin && !id.startsWith(`m-${accountLogin}-`)) return false;
-    if (id.includes('test')) return false;
-    if (t.outcome === 'SIM_CLOSE' || t.outcome === 'ADMIN_CLOSE') return false;
+    if (id.toLowerCase().includes('test')) return false;
+    if (outcome === 'SIM_CLOSE' || outcome === 'ADMIN_CLOSE') return false;
+    if (outcome.toLowerCase().includes('test')) return false;
+    return true;
+  });
+  const seenIds = new Set();
+  const myTrades = filtered.filter(t => {
+    const id = String(t.id || '');
+    if (!id) return true;
+    if (seenIds.has(id)) return false;
+    seenIds.add(id);
     return true;
   });
 
@@ -1625,13 +1636,18 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
           const LIVE_START_MS = new Date('2026-05-08T00:00:00Z').getTime();
           const parseR = (r) => parseFloat(String(r).replace(/[^0-9.\-+]/g, '')) || 0;
           const activeLogin = tradesData.account?.login ? String(tradesData.account.login) : null;
+          const seenStatIds = new Set();
           const trades = (tradesData.trades || []).filter(t => {
             const id = String(t.id || '');
+            const outcome = String(t.outcome || '');
             if (!t.result) return false;
-            if (t.outcome === 'closed' || t.outcome === 'SIM_CLOSE' || t.outcome === 'ADMIN_CLOSE') return false;
+            if (outcome === 'closed' || outcome === 'SIM_CLOSE' || outcome === 'ADMIN_CLOSE') return false;
             if ((t.closed_at || 0) < LIVE_START_MS) return false;
             if (id.startsWith('m-') && activeLogin && !id.startsWith(`m-${activeLogin}-`)) return false;
-            if (id.includes('test')) return false;
+            if (id.toLowerCase().includes('test')) return false;
+            if (outcome.toLowerCase().includes('test')) return false;
+            if (id && seenStatIds.has(id)) return false;
+            if (id) seenStatIds.add(id);
             return true;
           });
           const wins = trades.filter(t => parseR(t.result) > 0).length;
