@@ -5,7 +5,7 @@ import {
   Wallet, TrendingUp, Shield, Cpu, Activity, DollarSign, 
   LayoutDashboard, Home, ArrowUpRight, ArrowDownLeft, 
   Settings, LogOut, PieChart, Clock, Zap, X, Copy, Download, TrendingDown,
-  ChevronLeft, ChevronRight, AlertTriangle, Check, Sparkles, Lock, Award
+  ChevronLeft, ChevronRight, AlertTriangle, Check, Sparkles, Lock, Award, Trophy, Users, Calendar, Gift
 } from 'lucide-react';
 import { metaApiService } from './services/metaApi';
 
@@ -665,6 +665,8 @@ const Navbar = ({ onBuyClick }) => {
             <div className="w-px h-4 bg-white/10"></div>
             <Link to="/results" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Live Results</Link>
             <div className="w-px h-4 bg-white/10"></div>
+            <Link to="/leaderboard" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Leaderboard</Link>
+            <div className="w-px h-4 bg-white/10"></div>
             <Link to="/myfxbook" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Myfxbook</Link>
             <div className="w-px h-4 bg-white/10"></div>
             <Link to="/how-it-works" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">How It Works</Link>
@@ -700,6 +702,7 @@ const Navbar = ({ onBuyClick }) => {
             <div className="flex flex-col gap-2">
               <Link to="/dashboard" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Terminal</Link>
               <Link to="/results" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Live Results</Link>
+              <Link to="/leaderboard" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Leaderboard</Link>
               <Link to="/myfxbook" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Myfxbook</Link>
               <Link to="/how-it-works" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">How It Works</Link>
             </div>
@@ -1605,6 +1608,168 @@ const MyfxbookPage = () => {
             </>
           )}
         </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Page: Referral Leaderboard ---
+const LeaderboardPage = () => {
+  const [board, setBoard] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(`${FLEXBOT_SERVER}/api/leaderboard`, { cache: 'no-store' });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'unknown');
+        setBoard(data.leaderboard || []);
+        setError(false);
+      } catch (e) {
+        console.error('[Leaderboard] failed:', e);
+        setError(true);
+      }
+      setLoading(false);
+    };
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const now = new Date();
+  const monthName = now.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const daysLeft = Math.max(0, Math.ceil((nextMonth - now) / (24 * 3600 * 1000)));
+
+  const medals = ['🥇', '🥈', '🥉'];
+  const tierColor = (rank) => {
+    if (rank === 1) return 'text-yellow-400';
+    if (rank === 2) return 'text-gray-300';
+    if (rank === 3) return 'text-amber-600';
+    return 'text-white';
+  };
+
+  return (
+    <div className="relative min-h-screen pt-12 sm:pt-24 pb-12 sm:pb-20">
+      <div className="absolute inset-0 bg-yellow-500/[0.015] pointer-events-none"></div>
+      <div className="container mx-auto px-4 sm:px-6 relative z-10">
+        {/* Hero */}
+        <div className="text-center mb-10 sm:mb-16">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/5 border border-yellow-500/10 text-yellow-400 text-[10px] font-black uppercase tracking-widest mb-6">
+            <Trophy className="w-3 h-3" /> Monthly Referral Leaderboard
+          </div>
+          <h1 className="text-3xl sm:text-5xl md:text-7xl font-black tracking-tighter mb-4 text-white uppercase">
+            Leader<span className="text-gray-500">board</span>
+          </h1>
+          <p className="text-gray-400 max-w-2xl mx-auto font-medium leading-relaxed">
+            {monthName} · Top inviters this month. #1 at month-end wins +30 days free on their FlexBot license.
+          </p>
+        </div>
+
+        {/* Stats */}
+        <div className="max-w-4xl mx-auto grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 sm:p-6 text-center">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <Users className="w-3 h-3 text-gray-500" />
+              <p className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest">Inviters</p>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-white tabular-nums">
+              {loading ? '—' : board.length}
+            </p>
+          </div>
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 sm:p-6 text-center">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <Calendar className="w-3 h-3 text-gray-500" />
+              <p className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest">Days Remaining</p>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-white tabular-nums">{daysLeft}</p>
+          </div>
+        </div>
+
+        {/* Leaderboard Card */}
+        <div className="max-w-4xl mx-auto bg-white/[0.02] border border-white/[0.05] rounded-2xl sm:rounded-[32px] overflow-hidden shadow-2xl relative">
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-yellow-500/[0.025] blur-[150px] rounded-full -z-10 pointer-events-none"></div>
+
+          {/* Table header */}
+          <div className="grid grid-cols-[60px_1fr_90px] sm:grid-cols-[80px_1fr_120px] gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-white/5 bg-white/[0.01]">
+            <p className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest">Rank</p>
+            <p className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest">Name</p>
+            <p className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest text-right">Invites</p>
+          </div>
+
+          {loading ? (
+            <div className="py-16 flex flex-col items-center gap-3">
+              <div className="w-7 h-7 border-2 border-yellow-500/20 border-t-yellow-400 rounded-full animate-spin"></div>
+              <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Loading leaderboard…</p>
+            </div>
+          ) : error ? (
+            <div className="py-16 text-center px-6">
+              <AlertTriangle size={28} className="text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Couldn't load leaderboard — try again in a moment</p>
+            </div>
+          ) : board.length === 0 ? (
+            <div className="py-16 text-center px-6">
+              <Trophy size={32} className="text-gray-700 mx-auto mb-4" />
+              <p className="text-gray-400 text-sm font-medium mb-1">No invites yet this month</p>
+              <p className="text-gray-600 text-[10px] font-black uppercase tracking-widest">Be the first 🚀</p>
+            </div>
+          ) : (
+            <div>
+              {board.map((entry, i) => {
+                const rank = entry.rank || (i + 1);
+                const isTopThree = rank <= 3;
+                return (
+                  <div
+                    key={`${entry.name}-${i}`}
+                    className={`grid grid-cols-[60px_1fr_90px] sm:grid-cols-[80px_1fr_120px] gap-2 px-4 sm:px-6 py-4 sm:py-5 items-center transition-colors hover:bg-white/[0.02] ${i !== board.length - 1 ? 'border-b border-white/[0.04]' : ''} ${rank === 1 ? 'bg-yellow-500/[0.03]' : ''}`}
+                  >
+                    <div className="flex items-center">
+                      {isTopThree ? (
+                        <span className="text-2xl sm:text-3xl leading-none">{medals[rank - 1]}</span>
+                      ) : (
+                        <span className="text-base sm:text-lg font-black text-gray-500 tabular-nums">#{rank}</span>
+                      )}
+                    </div>
+                    <p className={`text-sm sm:text-base font-black truncate ${tierColor(rank)}`}>
+                      {entry.name || 'Anonymous'}
+                    </p>
+                    <p className="text-base sm:text-xl font-black text-white tabular-nums text-right">
+                      {entry.invites || 0}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Prize callout */}
+        <div className="max-w-4xl mx-auto mt-6 sm:mt-8 bg-gradient-to-br from-yellow-500/[0.08] to-yellow-500/[0.02] border border-yellow-500/20 rounded-2xl p-5 sm:p-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-6 opacity-[0.04] pointer-events-none">
+            <Gift size={120} className="text-yellow-400 rotate-12" />
+          </div>
+          <div className="relative z-10 flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shrink-0">
+              <Gift className="text-yellow-400 w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <p className="text-yellow-400 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] mb-2">Monthly Prize</p>
+              <p className="text-white text-sm sm:text-base font-bold leading-relaxed mb-1">
+                #1 at month-end wins <span className="text-yellow-400">+30 days free</span> on their FlexBot license.
+              </p>
+              <p className="text-gray-500 text-xs leading-relaxed">
+                Auto-applied. Announced in the community group on the 1st.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer hint */}
+        <p className="text-center text-gray-600 text-[10px] font-black uppercase tracking-widest mt-8">
+          Get your invite link in the community group · type <span className="text-gray-400">/myref</span>
+        </p>
       </div>
     </div>
   );
@@ -3105,6 +3270,7 @@ function App() {
           <Route path="/how-it-works" element={<ContractPage onBuyClick={() => setShowPaymentModal(true)} />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/myfxbook" element={<MyfxbookPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
         </Routes>
         <Routes>
           <Route path="/" element={<footer className="container mx-auto px-4 sm:px-6 py-10 sm:py-20 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-10 border-t border-white/5"><Logo /><p className="text-xs font-bold text-gray-600 tracking-widest uppercase">&copy; 2026 All Rights Reserved.</p><div className="flex gap-6 text-xs font-black text-gray-500 uppercase tracking-widest"><a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Twitter</a><a href="https://t.me/flexbotcommunity" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Telegram</a><a href="https://docs.flexbot.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Docs</a></div></footer>} />
