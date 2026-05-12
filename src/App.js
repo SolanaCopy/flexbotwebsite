@@ -1194,8 +1194,21 @@ const ResultsPage = () => {
 
   const weekLabel = `${selectedWeekStart.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} — ${selectedWeekEnd.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`;
 
+  // Only show trades from the currently active master account (backend may still hold history from previous accounts).
+  // Also drop simulation/admin test trades — they're tagged with "test" in the id or use SIM_CLOSE / ADMIN_CLOSE outcomes.
+  const accountLogin = account?.login ? String(account.login) : null;
+  const myTrades = accountLogin
+    ? trades.filter(t => {
+        const id = String(t.id || '');
+        if (!id.startsWith(`m-${accountLogin}-`)) return false;
+        if (id.includes('test')) return false;
+        if (t.outcome === 'SIM_CLOSE' || t.outcome === 'ADMIN_CLOSE') return false;
+        return true;
+      })
+    : [];
+
   // Filter trades for selected week (exclude weekends and trades without result)
-  const weekTrades = trades.filter(t => {
+  const weekTrades = myTrades.filter(t => {
     if (!t.result || t.outcome === 'closed') return false;
     const ts = t.closed_at || t.opened_at;
     if (!ts) return false;
@@ -1225,7 +1238,7 @@ const ResultsPage = () => {
   const weekWinRate = weekTrades.length > 0 ? ((weekWins / weekTrades.length) * 100).toFixed(1) : '0';
 
   // Check if there are trades in older weeks (for prev button)
-  const oldestTrade = trades.length > 0 ? Math.min(...trades.map(t => t.closed_at || t.opened_at || Infinity)) : null;
+  const oldestTrade = myTrades.length > 0 ? Math.min(...myTrades.map(t => t.closed_at || t.opened_at || Infinity)) : null;
   const oldestWeekStart = oldestTrade ? getWeekStart(new Date(oldestTrade)) : null;
   const canGoPrev = oldestWeekStart ? selectedWeekStart > oldestWeekStart : false;
 
@@ -1474,9 +1487,16 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
           const START_BALANCE = 100000;
           const LIVE_START_MS = new Date('2026-05-08T00:00:00Z').getTime();
           const parseR = (r) => parseFloat(String(r).replace(/[^0-9.\-+]/g, '')) || 0;
-          const trades = (tradesData.trades || []).filter(t =>
-            t.result && t.outcome !== 'closed' && (t.closed_at || 0) >= LIVE_START_MS
-          );
+          const activeLogin = tradesData.account?.login ? String(tradesData.account.login) : null;
+          const trades = (tradesData.trades || []).filter(t => {
+            const id = String(t.id || '');
+            if (!t.result) return false;
+            if (t.outcome === 'closed' || t.outcome === 'SIM_CLOSE' || t.outcome === 'ADMIN_CLOSE') return false;
+            if ((t.closed_at || 0) < LIVE_START_MS) return false;
+            if (activeLogin && !id.startsWith(`m-${activeLogin}-`)) return false;
+            if (id.includes('test')) return false;
+            return true;
+          });
           const wins = trades.filter(t => parseR(t.result) > 0).length;
           const winRate = trades.length > 0 ? (wins / trades.length) * 100 : 0;
           const balance = tradesData.account?.balance || START_BALANCE;
