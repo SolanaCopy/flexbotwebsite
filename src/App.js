@@ -5,7 +5,7 @@ import {
   Wallet, TrendingUp, Shield, Cpu, Activity, DollarSign, 
   LayoutDashboard, Home, ArrowUpRight, ArrowDownLeft, 
   Settings, LogOut, PieChart, Clock, Zap, X, Copy, Download, TrendingDown,
-  ChevronLeft, ChevronRight, AlertTriangle, Check, Sparkles, Lock, Award
+  ChevronLeft, ChevronRight, AlertTriangle, Check, Sparkles, Lock, Award, Package, Play
 } from 'lucide-react';
 import { metaApiService } from './services/metaApi';
 
@@ -2884,14 +2884,25 @@ const ContractPage = ({ onBuyClick }) => {
           </div>
         </motion.div>
 
-        {/* Big visual: 3 Steps */}
+        {/* Installation flow */}
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className="bg-white/[0.03] border border-white/10 rounded-2xl sm:rounded-[48px] overflow-hidden shadow-2xl mb-6 sm:mb-10">
+
+          {/* Header */}
+          <div className="p-6 sm:p-10 md:p-14 text-center border-b border-white/5">
+            <div className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] mb-3">Setup</div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white uppercase tracking-tight mb-3">After Payment, You're Live in Under a Minute</h2>
+            <p className="text-gray-400 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto">
+              Once your USDT payment is confirmed, you get a private download link. Unzip the file, run the installer, and FlexBot is set up on your MT5. No technical knowledge needed.
+            </p>
+          </div>
+
+          {/* 3 steps */}
           <div className="grid lg:grid-cols-3">
             {[
-              { step: '01', title: 'Purchase & Install', desc: 'Get the FlexBot AI license ($500 USDT). Install the EA on your MetaTrader 5. Takes less than 5 minutes with our setup guide.', iconStyle: 'bg-blue-500/10 border-blue-500/20 text-blue-500', icon: <DollarSign size={24} /> },
-              { step: '02', title: 'Connect to AI', desc: 'The EA connects to our server. Trades are automatically copied to your account. Your funds stay with your own broker at all times.', iconStyle: 'bg-purple-500/10 border-purple-500/20 text-purple-500', icon: <Activity size={24} /> },
-              { step: '03', title: 'Let It Run', desc: 'FlexBot trades Gold (XAU/USD) fully automated. Entries, stop-losses, lot sizing — everything handled for you.', iconStyle: 'bg-green-500/10 border-green-500/20 text-green-500', icon: <Zap size={24} /> },
+              { step: '01', title: 'Receive Your Download', desc: "We send a private link with your personal FlexBot zip — license preset already baked in.", iconStyle: 'bg-blue-500/10 border-blue-500/20 text-blue-500', icon: <Download size={24} /> },
+              { step: '02', title: 'Unzip the File', desc: 'Extract the zip anywhere on your PC. Inside is a single installer executable — no setup wizard, no choices to make.', iconStyle: 'bg-purple-500/10 border-purple-500/20 text-purple-500', icon: <Package size={24} /> },
+              { step: '03', title: 'Run the Installer', desc: 'Double-click. The installer finds your MT5, copies the EA, compiles it, and saves your preset — all automatic. Done.', iconStyle: 'bg-green-500/10 border-green-500/20 text-green-500', icon: <Play size={24} /> },
             ].map((s, i) => (
               <div key={i} className={`p-6 sm:p-10 ${i < 2 ? 'border-b lg:border-b-0 lg:border-r border-white/5' : ''} group hover:bg-white/[0.03] transition-all`}>
                 <div className={`w-12 h-12 rounded-2xl ${s.iconStyle} border flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
@@ -2902,6 +2913,30 @@ const ContractPage = ({ onBuyClick }) => {
                 <p className="text-gray-500 text-sm leading-relaxed">{s.desc}</p>
               </div>
             ))}
+          </div>
+
+          {/* Installer screenshot */}
+          <div className="px-6 sm:px-10 md:px-14 pb-6 sm:pb-10 md:pb-14 pt-2 border-t border-white/5">
+            <p className="text-center text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] mt-8 mb-6">What you see when you run it</p>
+            <div className="relative mx-auto max-w-3xl rounded-2xl overflow-hidden border border-white/10 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.7)] bg-black">
+              {/* macOS-style window chrome */}
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10 bg-white/[0.03]">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/60"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/60"></div>
+                </div>
+                <p className="text-[9px] sm:text-[10px] font-bold text-gray-500 ml-2 tracking-wider">FlexBot Installer</p>
+              </div>
+              <img
+                src="/installer-preview.jpg"
+                alt="FlexBot installer running through setup steps"
+                className="w-full h-auto block"
+              />
+            </div>
+            <p className="text-center text-gray-500 text-xs sm:text-sm mt-5 leading-relaxed max-w-xl mx-auto">
+              Five automated steps — find your MT5, install the EA, compile it, save your preset, you're done. Total time: under a minute.
+            </p>
           </div>
         </motion.div>
 
