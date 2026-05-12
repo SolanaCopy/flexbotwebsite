@@ -5,7 +5,7 @@ import {
   Wallet, TrendingUp, Shield, Cpu, Activity, DollarSign, 
   LayoutDashboard, Home, ArrowUpRight, ArrowDownLeft, 
   Settings, LogOut, PieChart, Clock, Zap, X, Copy, Download, TrendingDown,
-  ChevronLeft, ChevronRight, AlertTriangle, Check, Sparkles, Lock, Award, Trophy, Users, Calendar, Gift
+  ChevronLeft, ChevronRight, AlertTriangle, Check, Sparkles, Lock, Award
 } from 'lucide-react';
 import { metaApiService } from './services/metaApi';
 
@@ -1644,132 +1644,59 @@ const LeaderboardPage = () => {
   const daysLeft = Math.max(0, Math.ceil((nextMonth - now) / (24 * 3600 * 1000)));
 
   const medals = ['🥇', '🥈', '🥉'];
-  const tierColor = (rank) => {
-    if (rank === 1) return 'text-yellow-400';
-    if (rank === 2) return 'text-gray-300';
-    if (rank === 3) return 'text-amber-600';
-    return 'text-white';
+  const nameClass = (rank) => {
+    if (rank === 1) return 'text-yellow-400 font-bold';
+    if (rank === 2) return 'text-gray-300 font-semibold';
+    if (rank === 3) return 'text-amber-600 font-semibold';
+    return '';
   };
 
   return (
-    <div className="relative min-h-screen pt-12 sm:pt-24 pb-12 sm:pb-20">
-      <div className="absolute inset-0 bg-yellow-500/[0.015] pointer-events-none"></div>
-      <div className="container mx-auto px-4 sm:px-6 relative z-10">
-        {/* Hero */}
-        <div className="text-center mb-10 sm:mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/5 border border-yellow-500/10 text-yellow-400 text-[10px] font-black uppercase tracking-widest mb-6">
-            <Trophy className="w-3 h-3" /> Monthly Referral Leaderboard
-          </div>
-          <h1 className="text-3xl sm:text-5xl md:text-7xl font-black tracking-tighter mb-4 text-white uppercase">
-            Leader<span className="text-gray-500">board</span>
-          </h1>
-          <p className="text-gray-400 max-w-2xl mx-auto font-medium leading-relaxed">
-            {monthName} · Top inviters this month. #1 at month-end wins +30 days free on their FlexBot license.
-          </p>
-        </div>
+    <div className="relative min-h-screen py-16 sm:py-20 px-4 sm:px-6">
+      <div className="container mx-auto">
+        <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-3">🏆 Referral Leaderboard</h2>
+        <p className="text-gray-400 text-center text-base mb-12 max-w-xl mx-auto">
+          Members invite friends — top inviter each month wins a free month. Live standings:
+        </p>
 
-        {/* Stats */}
-        <div className="max-w-4xl mx-auto grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 sm:p-6 text-center">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <Users className="w-3 h-3 text-gray-500" />
-              <p className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest">Inviters</p>
-            </div>
-            <p className="text-2xl sm:text-3xl font-black text-white tabular-nums">
-              {loading ? '—' : board.length}
-            </p>
+        <div className="max-w-2xl mx-auto bg-[#15151a] border border-white/10 rounded-2xl overflow-hidden">
+          <div className="flex justify-between items-center py-4 px-6 border-b border-white/10">
+            <div className="font-bold">{monthName}</div>
+            <div className="text-gray-500 text-sm">{daysLeft} day{daysLeft === 1 ? '' : 's'} left</div>
           </div>
-          <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 sm:p-6 text-center">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <Calendar className="w-3 h-3 text-gray-500" />
-              <p className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest">Days Remaining</p>
-            </div>
-            <p className="text-2xl sm:text-3xl font-black text-white tabular-nums">{daysLeft}</p>
-          </div>
-        </div>
-
-        {/* Leaderboard Card */}
-        <div className="max-w-4xl mx-auto bg-white/[0.02] border border-white/[0.05] rounded-2xl sm:rounded-[32px] overflow-hidden shadow-2xl relative">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-yellow-500/[0.025] blur-[150px] rounded-full -z-10 pointer-events-none"></div>
-
-          {/* Table header */}
-          <div className="grid grid-cols-[60px_1fr_90px] sm:grid-cols-[80px_1fr_120px] gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-white/5 bg-white/[0.01]">
-            <p className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest">Rank</p>
-            <p className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest">Name</p>
-            <p className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest text-right">Invites</p>
-          </div>
-
-          {loading ? (
-            <div className="py-16 flex flex-col items-center gap-3">
-              <div className="w-7 h-7 border-2 border-yellow-500/20 border-t-yellow-400 rounded-full animate-spin"></div>
-              <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Loading leaderboard…</p>
-            </div>
-          ) : error ? (
-            <div className="py-16 text-center px-6">
-              <AlertTriangle size={28} className="text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Couldn't load leaderboard — try again in a moment</p>
-            </div>
-          ) : board.length === 0 ? (
-            <div className="py-16 text-center px-6">
-              <Trophy size={32} className="text-gray-700 mx-auto mb-4" />
-              <p className="text-gray-400 text-sm font-medium mb-1">No invites yet this month</p>
-              <p className="text-gray-600 text-[10px] font-black uppercase tracking-widest">Be the first 🚀</p>
-            </div>
-          ) : (
-            <div>
-              {board.map((entry, i) => {
+          <table className="w-full text-base">
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="3" className="text-center py-12 text-gray-500 text-sm">Loading…</td></tr>
+              ) : error ? (
+                <tr><td colSpan="3" className="text-center py-12 text-gray-500 text-sm">Couldn't load leaderboard right now.</td></tr>
+              ) : board.length === 0 ? (
+                <tr><td colSpan="3" className="text-center py-12 text-gray-500 text-sm">No invites yet this month — be the first 🚀</td></tr>
+              ) : board.slice(0, 10).map((entry, i, arr) => {
                 const rank = entry.rank || (i + 1);
-                const isTopThree = rank <= 3;
+                const isTop3 = rank <= 3;
+                const isLast = i === arr.length - 1;
                 return (
-                  <div
-                    key={`${entry.name}-${i}`}
-                    className={`grid grid-cols-[60px_1fr_90px] sm:grid-cols-[80px_1fr_120px] gap-2 px-4 sm:px-6 py-4 sm:py-5 items-center transition-colors hover:bg-white/[0.02] ${i !== board.length - 1 ? 'border-b border-white/[0.04]' : ''} ${rank === 1 ? 'bg-yellow-500/[0.03]' : ''}`}
-                  >
-                    <div className="flex items-center">
-                      {isTopThree ? (
-                        <span className="text-2xl sm:text-3xl leading-none">{medals[rank - 1]}</span>
-                      ) : (
-                        <span className="text-base sm:text-lg font-black text-gray-500 tabular-nums">#{rank}</span>
-                      )}
-                    </div>
-                    <p className={`text-sm sm:text-base font-black truncate ${tierColor(rank)}`}>
-                      {entry.name || 'Anonymous'}
-                    </p>
-                    <p className="text-base sm:text-xl font-black text-white tabular-nums text-right">
-                      {entry.invites || 0}
-                    </p>
-                  </div>
+                  <tr key={`${entry.name || ''}-${i}`} className={isLast ? '' : 'border-b border-white/10'}>
+                    <td className="py-3 px-6 text-2xl font-bold w-16">
+                      {isTop3 ? medals[rank - 1] : <span className="text-gray-500 text-base">{rank}</span>}
+                    </td>
+                    <td className={`py-3 px-6 ${nameClass(rank)}`}>{entry.name || 'Anonymous'}</td>
+                    <td className="py-3 px-6 text-right font-bold tabular-nums w-24">{entry.invites || 0}</td>
+                  </tr>
                 );
               })}
-            </div>
-          )}
+            </tbody>
+          </table>
         </div>
 
-        {/* Prize callout */}
-        <div className="max-w-4xl mx-auto mt-6 sm:mt-8 bg-gradient-to-br from-yellow-500/[0.08] to-yellow-500/[0.02] border border-yellow-500/20 rounded-2xl p-5 sm:p-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-6 opacity-[0.04] pointer-events-none">
-            <Gift size={120} className="text-yellow-400 rotate-12" />
-          </div>
-          <div className="relative z-10 flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shrink-0">
-              <Gift className="text-yellow-400 w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <p className="text-yellow-400 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] mb-2">Monthly Prize</p>
-              <p className="text-white text-sm sm:text-base font-bold leading-relaxed mb-1">
-                #1 at month-end wins <span className="text-yellow-400">+30 days free</span> on their FlexBot license.
-              </p>
-              <p className="text-gray-500 text-xs leading-relaxed">
-                Auto-applied. Announced in the community group on the 1st.
-              </p>
-            </div>
+        <div className="max-w-2xl mx-auto mt-6 bg-gradient-to-br from-yellow-400/[0.12] to-yellow-400/[0.04] border border-yellow-400/30 rounded-2xl p-6 text-center">
+          <div className="text-yellow-400 text-xs uppercase tracking-widest font-bold mb-2">🎁 Monthly Prize</div>
+          <div className="text-gray-200 text-base leading-relaxed">
+            #1 at the end of the month wins <b>+30 days free</b> on their FlexBot license.<br />
+            Auto-applied. Announced in the community group.
           </div>
         </div>
-
-        {/* Footer hint */}
-        <p className="text-center text-gray-600 text-[10px] font-black uppercase tracking-widest mt-8">
-          Get your invite link in the community group · type <span className="text-gray-400">/myref</span>
-        </p>
       </div>
     </div>
   );
