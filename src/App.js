@@ -1198,17 +1198,16 @@ const ResultsPage = () => {
   const weekLabel = `${selectedWeekStart.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} — ${selectedWeekEnd.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`;
 
   // Only show trades from the currently active master account (backend may still hold history from previous accounts).
-  // Also drop simulation/admin test trades — they're tagged with "test" in the id or use SIM_CLOSE / ADMIN_CLOSE outcomes.
+  // Legacy IDs use the `m-{login}-{tradeId}` format — filter those by login. Newer IDs (e.g. `admin-...`) lack the
+  // login segment and are accepted as-is. Also drop simulation/admin test trades.
   const accountLogin = account?.login ? String(account.login) : null;
-  const myTrades = accountLogin
-    ? trades.filter(t => {
-        const id = String(t.id || '');
-        if (!id.startsWith(`m-${accountLogin}-`)) return false;
-        if (id.includes('test')) return false;
-        if (t.outcome === 'SIM_CLOSE' || t.outcome === 'ADMIN_CLOSE') return false;
-        return true;
-      })
-    : [];
+  const myTrades = trades.filter(t => {
+    const id = String(t.id || '');
+    if (id.startsWith('m-') && accountLogin && !id.startsWith(`m-${accountLogin}-`)) return false;
+    if (id.includes('test')) return false;
+    if (t.outcome === 'SIM_CLOSE' || t.outcome === 'ADMIN_CLOSE') return false;
+    return true;
+  });
 
   // Filter trades for selected week (exclude weekends and trades without result)
   const weekTrades = myTrades.filter(t => {
@@ -1631,7 +1630,7 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
             if (!t.result) return false;
             if (t.outcome === 'closed' || t.outcome === 'SIM_CLOSE' || t.outcome === 'ADMIN_CLOSE') return false;
             if ((t.closed_at || 0) < LIVE_START_MS) return false;
-            if (activeLogin && !id.startsWith(`m-${activeLogin}-`)) return false;
+            if (id.startsWith('m-') && activeLogin && !id.startsWith(`m-${activeLogin}-`)) return false;
             if (id.includes('test')) return false;
             return true;
           });
