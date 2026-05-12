@@ -1616,6 +1616,7 @@ const MyfxbookPage = () => {
 // --- Page: Referral Leaderboard ---
 const LeaderboardPage = () => {
   const [board, setBoard] = useState([]);
+  const [weights, setWeights] = useState({ paid: 10, group: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -1626,6 +1627,7 @@ const LeaderboardPage = () => {
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'unknown');
         setBoard(data.leaderboard || []);
+        if (data.weights) setWeights(data.weights);
         setError(false);
       } catch (e) {
         console.error('[Leaderboard] failed:', e);
@@ -1652,37 +1654,65 @@ const LeaderboardPage = () => {
   };
 
   return (
-    <div className="relative min-h-screen py-16 sm:py-20 px-4 sm:px-6">
-      <div className="container mx-auto">
-        <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-3">🏆 Referral Leaderboard</h2>
-        <p className="text-gray-400 text-center text-base mb-12 max-w-xl mx-auto">
-          Members invite friends — top inviter each month wins a free month. Live standings:
-        </p>
-
-        <div className="max-w-2xl mx-auto bg-[#15151a] border border-white/10 rounded-2xl overflow-hidden">
-          <div className="flex justify-between items-center py-4 px-6 border-b border-white/10">
-            <div className="font-bold">{monthName}</div>
-            <div className="text-gray-500 text-sm">{daysLeft} day{daysLeft === 1 ? '' : 's'} left</div>
+    <div className="relative min-h-screen py-12 sm:py-16 px-4 sm:px-6">
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="text-center pt-4 pb-8 sm:pb-10 px-4">
+          <div className="text-yellow-400 text-[13px] font-bold tracking-[0.2em] mb-2">FLEXBOT</div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2">🏆 Referral Leaderboard</h1>
+          <div className="text-gray-500 text-sm">
+            {loading ? 'Loading…' : `${monthName} · Top inviters this month`}
           </div>
-          <table className="w-full text-base">
+        </div>
+
+        {/* Summary stats */}
+        <div className="grid grid-cols-2 gap-3 mb-7">
+          <div className="bg-[#15151a] border border-white/10 rounded-xl p-4 sm:p-5 text-center">
+            <div className="text-gray-500 text-[11px] uppercase tracking-[0.12em] mb-2">Inviters</div>
+            <div className="text-2xl font-bold tabular-nums">{loading ? '—' : board.length}</div>
+          </div>
+          <div className="bg-[#15151a] border border-white/10 rounded-xl p-4 sm:p-5 text-center">
+            <div className="text-gray-500 text-[11px] uppercase tracking-[0.12em] mb-2">Days remaining</div>
+            <div className="text-2xl font-bold tabular-nums">{daysLeft}</div>
+          </div>
+        </div>
+
+        {/* Table card */}
+        <div className="bg-[#15151a] border border-white/10 rounded-xl overflow-hidden">
+          <table className="w-full text-[15px] sm:text-base">
+            <thead>
+              <tr>
+                <th className="bg-[#0a0a0c] text-gray-500 text-[11px] uppercase tracking-[0.12em] font-medium text-left py-3 px-2 sm:px-3.5 border-b border-white/10">Rank</th>
+                <th className="bg-[#0a0a0c] text-gray-500 text-[11px] uppercase tracking-[0.12em] font-medium text-left py-3 px-2 sm:px-3.5 border-b border-white/10">Name</th>
+                <th className="bg-[#0a0a0c] text-gray-500 text-[11px] uppercase tracking-[0.12em] font-medium text-right py-3 px-2 sm:px-3.5 border-b border-white/10 tabular-nums">Points</th>
+                <th className="bg-[#0a0a0c] text-gray-500 text-[11px] uppercase tracking-[0.12em] font-medium text-right py-3 px-2 sm:px-3.5 border-b border-white/10 tabular-nums">Paid</th>
+                <th className="bg-[#0a0a0c] text-gray-500 text-[11px] uppercase tracking-[0.12em] font-medium text-right py-3 px-2 sm:px-3.5 border-b border-white/10 tabular-nums">Group</th>
+              </tr>
+            </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="3" className="text-center py-12 text-gray-500 text-sm">Loading…</td></tr>
+                <tr><td colSpan="5" className="text-center py-8 text-gray-500 text-sm">Loading leaderboard…</td></tr>
               ) : error ? (
-                <tr><td colSpan="3" className="text-center py-12 text-gray-500 text-sm">Couldn't load leaderboard right now.</td></tr>
+                <tr><td colSpan="5" className="text-center py-10 text-gray-500 text-sm">Couldn't load leaderboard right now. Try again in a moment.</td></tr>
               ) : board.length === 0 ? (
-                <tr><td colSpan="3" className="text-center py-12 text-gray-500 text-sm">No invites yet this month — be the first 🚀</td></tr>
-              ) : board.slice(0, 10).map((entry, i, arr) => {
+                <tr><td colSpan="5" className="text-center py-10 text-gray-500 text-sm">No invites yet this month — be the first 🚀</td></tr>
+              ) : board.map((entry, i, arr) => {
                 const rank = entry.rank || (i + 1);
                 const isTop3 = rank <= 3;
                 const isLast = i === arr.length - 1;
+                const points = entry.points != null ? entry.points : (entry.invites || 0);
+                const paid = entry.paid_invites != null ? entry.paid_invites : 0;
+                const grp = entry.group_invites != null ? entry.group_invites : 0;
+                const cellBase = `py-3 sm:py-3.5 px-2 sm:px-3.5 ${isLast ? '' : 'border-b border-white/10'}`;
                 return (
-                  <tr key={`${entry.name || ''}-${i}`} className={isLast ? '' : 'border-b border-white/10'}>
-                    <td className="py-3 px-6 text-2xl font-bold w-16">
-                      {isTop3 ? medals[rank - 1] : <span className="text-gray-500 text-base">{rank}</span>}
+                  <tr key={`${entry.name || ''}-${i}`}>
+                    <td className={`${cellBase} text-xl sm:text-[22px] font-bold w-14`}>
+                      {isTop3 ? medals[rank - 1] : <span className="text-gray-500 text-base font-semibold">{rank}</span>}
                     </td>
-                    <td className={`py-3 px-6 ${nameClass(rank)}`}>{entry.name || 'Anonymous'}</td>
-                    <td className="py-3 px-6 text-right font-bold tabular-nums w-24">{entry.invites || 0}</td>
+                    <td className={`${cellBase} ${nameClass(rank)}`}>{entry.name || 'Anonymous'}</td>
+                    <td className={`${cellBase} text-right tabular-nums text-yellow-400 font-bold text-base sm:text-lg w-16 sm:w-20`}>{points}</td>
+                    <td className={`${cellBase} text-right tabular-nums text-white font-semibold w-12 sm:w-16`}>{paid}</td>
+                    <td className={`${cellBase} text-right tabular-nums text-gray-500 font-semibold w-12 sm:w-16`}>{grp}</td>
                   </tr>
                 );
               })}
@@ -1690,12 +1720,23 @@ const LeaderboardPage = () => {
           </table>
         </div>
 
-        <div className="max-w-2xl mx-auto mt-6 bg-gradient-to-br from-yellow-400/[0.12] to-yellow-400/[0.04] border border-yellow-400/30 rounded-2xl p-6 text-center">
-          <div className="text-yellow-400 text-xs uppercase tracking-widest font-bold mb-2">🎁 Monthly Prize</div>
-          <div className="text-gray-200 text-base leading-relaxed">
+        {/* Scoring legend */}
+        <div className="mt-3.5 py-3 px-4 bg-[#15151a] border border-white/10 rounded-lg text-gray-500 text-xs text-center leading-relaxed">
+          Scoring: <b className="text-white">1 paid customer = {weights.paid} pts</b> · <b className="text-white">1 verified group join = {weights.group} pt{weights.group === 1 ? '' : 's'}</b>
+        </div>
+
+        {/* Prize */}
+        <div className="mt-6 bg-gradient-to-br from-yellow-400/[0.12] to-yellow-400/[0.04] border border-yellow-400/30 rounded-xl p-5 text-center">
+          <div className="text-yellow-400 text-[11px] uppercase tracking-[0.16em] font-bold mb-1.5">🎁 Monthly Prize</div>
+          <div className="text-gray-200 text-sm leading-relaxed">
             #1 at the end of the month wins <b>+30 days free</b> on their FlexBot license.<br />
-            Auto-applied. Announced in the community group.
+            Auto-applied. Announced in the community group on the 1st.
           </div>
+        </div>
+
+        {/* Footer hint */}
+        <div className="text-center mt-8 text-gray-500 text-xs">
+          Get your invite link in the community group: <code className="text-yellow-400">/myref</code>
         </div>
       </div>
     </div>
