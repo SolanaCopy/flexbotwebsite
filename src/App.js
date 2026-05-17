@@ -1,13 +1,725 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Wallet, TrendingUp, Shield, Cpu, Activity, DollarSign, 
-  LayoutDashboard, Home, ArrowUpRight, ArrowDownLeft, 
+import {
+  Wallet, TrendingUp, Shield, Cpu, Activity, DollarSign,
+  LayoutDashboard, Home, ArrowUpRight, ArrowDownLeft,
   Settings, LogOut, PieChart, Clock, Zap, X, Copy, Download, TrendingDown,
   ChevronLeft, ChevronRight, AlertTriangle, Check, Sparkles, Lock, Award, Package, Play
 } from 'lucide-react';
 import { metaApiService } from './services/metaApi';
+
+const SITE_URL = 'https://flexbot.ai';
+const SEO = ({ title, description, path = '/', image = `${SITE_URL}/FLEX.png` }) => {
+  const url = `${SITE_URL}${path}`;
+  return (
+    <Helmet>
+      <title>{title}</title>
+      <meta name="description" content={description} />
+      <link rel="canonical" href={url} />
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={description} />
+      <meta property="og:url" content={url} />
+      <meta property="og:image" content={image} />
+      <meta name="twitter:title" content={title} />
+      <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={image} />
+    </Helmet>
+  );
+};
+
+// --- Shared hook: fetch + dedupe master account trades since live start ---
+const SERVER_URL = 'https://flexbot-qpf2.onrender.com';
+const LIVE_START_MS = new Date('2026-05-12T00:00:00Z').getTime();
+const START_BALANCE = 100000;
+const parseResult = (r) => parseFloat(String(r).replace(/[^0-9.\-+]/g, '')) || 0;
+
+// Filter trades from /api/trades response for a specific account login.
+// Accepts trades with null result (older EA versions) — stats fall back to outcome-based.
+const filterTradesForLogin = (allTrades, login) => {
+  const prefix = `m-${login}-`;
+  const seen = new Set();
+  return (allTrades || []).filter(t => {
+    const id = String(t.id || '');
+    const outcome = String(t.outcome || '');
+    if (['SIM_CLOSE', 'ADMIN_CLOSE'].includes(outcome)) return false;
+    if (!id.startsWith(prefix)) return false;
+    if (id.toLowerCase().includes('test')) return false;
+    if (outcome.toLowerCase().includes('test')) return false;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  }).sort((a, b) => (a.closed_at || 0) - (b.closed_at || 0));
+};
+
+// Classify a trade as win/loss, preferring numeric result, falling back to outcome.
+const tradeOutcome = (t) => {
+  const r = parseResult(t.result);
+  if (r !== 0) return r > 0 ? 'win' : 'loss';
+  const o = String(t.outcome || '').toLowerCase();
+  if (o.includes('tp')) return 'win';
+  if (o.includes('sl')) return 'loss';
+  return 'unknown';
+};
+
+// Compute account metrics from a set of trades + starting balance.
+// If realAccount is provided (master account match), uses real equity/balance
+// for the bottom-line numbers — captures commission/swap that trade results miss.
+const computeStatsFromTrades = (trades, startBalance, realAccount = null) => {
+  const classed = trades.map(t => ({ ...t, _outcome: tradeOutcome(t), _r: parseResult(t.result) }));
+  const wins = classed.filter(t => t._outcome === 'win');
+  const losses = classed.filter(t => t._outcome === 'loss');
+  const classified = wins.length + losses.length;
+  const tradeSum = classed.reduce((s, t) => s + t._r, 0);
+  const grossWin = classed.filter(t => t._r > 0).reduce((s, t) => s + t._r, 0);
+  const grossLoss = Math.abs(classed.filter(t => t._r < 0).reduce((s, t) => s + t._r, 0));
+  // Prefer real account equity if available (covers commission/swap).
+  const realEquity = realAccount?.equity;
+  const realBalance = realAccount?.balance ?? realEquity;
+  const equity = realEquity != null ? realEquity : startBalance + tradeSum;
+  const balance = realBalance != null ? realBalance : startBalance + tradeSum;
+  const totalProfit = equity - startBalance;
+  const hasPL = classed.some(t => t._r !== 0) || realEquity != null;
+
+  const dayMap = {};
+  classed.forEach(t => {
+    const d = new Date(t.closed_at);
+    d.setUTCHours(0, 0, 0, 0);
+    const k = d.toISOString().slice(0, 10);
+    dayMap[k] = (dayMap[k] || 0) + t._r;
+  });
+  const dailyGrowth = Object.entries(dayMap).sort().map(([date, pnl]) => ({
+    date,
+    profitPercentage: (pnl / startBalance) * 100,
+  }));
+
+  // Map trades into the shape the existing Dashboard history table expects.
+  const mappedTrades = classed.map(t => ({
+    id: t.id,
+    symbol: t.symbol || 'XAUUSD',
+    type: t.direction || 'BUY',
+    profit: t._r,
+    outcome: t.outcome,
+    time: new Date(t.closed_at || Date.now()).toISOString(),
+    opened_at: t.opened_at,
+    closed_at: t.closed_at,
+    entry_price: t.entry_price,
+    sl: t.sl,
+    tp: t.tp,
+  }));
+
+  return {
+    balance,
+    equity,
+    profit: 0,
+    trades: [],
+    hasPL,
+    metrics: {
+      totalProfit,
+      totalTrades: trades.length,
+      winRate: classified > 0 ? (wins.length / classified) * 100 : 0,
+      maxDrawdown: hasPL ? Math.max(0, (startBalance - equity) / startBalance * 100) : 0,
+      profitFactor: grossLoss > 0 ? grossWin / grossLoss : 0,
+      averageWin: wins.length > 0 && grossWin > 0 ? grossWin / wins.length : 0,
+      averageLoss: losses.length > 0 && grossLoss > 0 ? -grossLoss / losses.length : 0,
+      deposits: startBalance,
+      withdrawals: 0,
+      trades: mappedTrades,
+      dailyGrowth,
+    },
+  };
+};
+
+const useLiveTrades = () => {
+  const [data, setData] = useState({ trades: [], account: null, loading: true });
+  useEffect(() => {
+    let cancelled = false;
+    const fetchTrades = async () => {
+      try {
+        const res = await fetch(`${SERVER_URL}/api/trades?limit=2000`);
+        const json = await res.json();
+        if (!json.ok || cancelled) return;
+        const activeLogin = json.account?.login ? String(json.account.login) : null;
+        const seen = new Set();
+        const trades = (json.trades || []).filter(t => {
+          const id = String(t.id || '');
+          const outcome = String(t.outcome || '');
+          if (!t.result) return false;
+          if (['closed', 'SIM_CLOSE', 'ADMIN_CLOSE'].includes(outcome)) return false;
+          if ((t.closed_at || 0) < LIVE_START_MS) return false;
+          if (id.startsWith('m-') && activeLogin && !id.startsWith(`m-${activeLogin}-`)) return false;
+          if (id.toLowerCase().includes('test')) return false;
+          if (outcome.toLowerCase().includes('test')) return false;
+          if (id && seen.has(id)) return false;
+          if (id) seen.add(id);
+          return true;
+        });
+        // Sort chronologically (oldest first)
+        trades.sort((a, b) => (a.closed_at || 0) - (b.closed_at || 0));
+        setData({ trades, account: json.account || null, loading: false });
+      } catch (e) {
+        if (!cancelled) setData(d => ({ ...d, loading: false }));
+      }
+    };
+    fetchTrades();
+    const interval = setInterval(fetchTrades, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+  return data;
+};
+
+// --- Sound system: subtle UI sounds with localStorage toggle ---
+const SOUND_KEY = 'flexbot_sound_enabled';
+const playSound = (type) => {
+  if (typeof window === 'undefined') return;
+  if (localStorage.getItem(SOUND_KEY) !== '1') return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const freq = type === 'click' ? 880 : type === 'hover' ? 1200 : 440;
+    osc.frequency.value = freq;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.08);
+  } catch (e) { /* noop */ }
+};
+
+// --- Live Trade Ticker: sliding strip at top showing recent closed trades ---
+const LiveTradeTicker = () => {
+  const { trades } = useLiveTrades();
+  if (!trades || trades.length === 0) return null;
+  const recent = [...trades].reverse().slice(0, 15);
+  const items = [...recent, ...recent]; // duplicate for seamless loop
+  const fmtAgo = (ms) => {
+    const d = Date.now() - ms;
+    if (d < 60_000) return `${Math.floor(d / 1000)}s ago`;
+    if (d < 3_600_000) return `${Math.floor(d / 60_000)}m ago`;
+    if (d < 86_400_000) return `${Math.floor(d / 3_600_000)}h ago`;
+    return `${Math.floor(d / 86_400_000)}d ago`;
+  };
+  return (
+    <div className="relative w-full bg-black/60 backdrop-blur-md border-b border-white/5 overflow-hidden h-8 flex items-center">
+      <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-black to-transparent z-10 pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-black to-transparent z-10 pointer-events-none" />
+      <div className="flex items-center gap-8 animate-[ticker_60s_linear_infinite] whitespace-nowrap">
+        {items.map((t, i) => {
+          const r = parseResult(t.result);
+          const positive = r > 0;
+          return (
+            <div key={i} className="flex items-center gap-2 text-[11px] font-bold tracking-wide">
+              <span className={`w-1.5 h-1.5 rounded-full ${positive ? 'bg-green-400' : 'bg-red-400'} ${i < 3 ? 'animate-pulse' : ''}`} />
+              <span className="text-gray-500">XAUUSD</span>
+              <span className={`${positive ? 'text-green-400' : 'text-red-400'}`}>
+                {t.direction || 'BUY'} {positive ? '+' : ''}{r.toFixed(2)} USD
+              </span>
+              <span className="text-gray-600">· {fmtAgo(t.closed_at)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// --- Equity Curve Section: animated cumulative P/L since live start ---
+const EquityCurveSection = () => {
+  const { trades, account, loading } = useLiveTrades();
+  if (loading || trades.length === 0) {
+    return (
+      <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-20 relative">
+        <div className="text-center text-gray-500 text-sm font-bold">Loading live equity curve…</div>
+      </section>
+    );
+  }
+
+  // Distribute commission/swap (gap between trade sum and real equity) evenly per trade
+  // so the curve endpoint matches the real account equity.
+  const tradeSum = trades.reduce((s, t) => s + parseResult(t.result), 0);
+  const realPL = account?.equity != null ? account.equity - START_BALANCE : tradeSum;
+  const perTradeCost = (tradeSum - realPL) / trades.length;
+
+  let running = START_BALANCE;
+  const points = [{ x: trades[0]?.closed_at || Date.now(), y: running }];
+  trades.forEach(t => {
+    running += parseResult(t.result) - perTradeCost;
+    points.push({ x: t.closed_at, y: running });
+  });
+
+  const minY = Math.min(...points.map(p => p.y));
+  const maxY = Math.max(...points.map(p => p.y));
+  const padY = (maxY - minY) * 0.1 || 1000;
+  const yLow = minY - padY, yHigh = maxY + padY;
+  const minX = points[0].x, maxX = points[points.length - 1].x;
+  const rangeX = (maxX - minX) || 1;
+  const W = 1000, H = 360;
+  const sx = (x) => ((x - minX) / rangeX) * W;
+  const sy = (y) => H - ((y - yLow) / (yHigh - yLow)) * H;
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`).join(' ');
+  const areaPath = `${linePath} L ${sx(points[points.length - 1].x).toFixed(1)} ${H} L ${sx(points[0].x).toFixed(1)} ${H} Z`;
+
+  const totalPL = running - START_BALANCE;
+  const peakY = Math.max(...points.map(p => p.y));
+  const finalColor = totalPL >= 0 ? '#10b981' : '#ef4444';
+
+  const yTicks = [yLow, yLow + (yHigh - yLow) * 0.5, yHigh].map(v => Math.round(v / 1000) * 1000);
+  const fmtDate = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const daysActive = Math.max(1, Math.floor((Date.now() - LIVE_START_MS) / 86_400_000));
+  const activeLabel = daysActive < 7
+    ? `${daysActive} day${daysActive === 1 ? '' : 's'}`
+    : daysActive < 30
+      ? `${Math.floor(daysActive / 7)} week${Math.floor(daysActive / 7) === 1 ? '' : 's'}`
+      : `${Math.floor(daysActive / 30)} month${Math.floor(daysActive / 30) === 1 ? '' : 's'}`;
+
+  return (
+    <section className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 relative max-w-5xl">
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.2 }}
+        transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+        className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 relative overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/[0.04] via-transparent to-transparent pointer-events-none" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 relative z-10">
+          <div>
+            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-green-500/5 border border-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-widest mb-2">
+              <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" /> Live MT5 Master
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase">Equity <span className="text-gray-500">Curve</span></h2>
+            <p className="text-gray-500 text-xs font-medium mt-1">
+              <span className="text-white font-bold">{activeLabel}</span> active · {trades.length} trades · since {fmtDate(LIVE_START_MS)}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Cumulative P/L</p>
+            <p className="text-2xl sm:text-3xl font-black tabular-nums" style={{ color: finalColor }}>
+              {totalPL >= 0 ? '+' : '-'}${Math.abs(totalPL).toFixed(0)}
+            </p>
+          </div>
+        </div>
+
+        <div className="relative">
+          <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-[180px] sm:h-[220px]">
+            <defs>
+              <linearGradient id="eq-area" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={finalColor} stopOpacity="0.35" />
+                <stop offset="100%" stopColor={finalColor} stopOpacity="0" />
+              </linearGradient>
+              <linearGradient id="eq-line" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#3b82f6" />
+                <stop offset="100%" stopColor={finalColor} />
+              </linearGradient>
+              <filter id="eq-glow">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+            </defs>
+            {/* Grid lines */}
+            {[0.25, 0.5, 0.75].map(t => (
+              <line key={t} x1="0" y1={H * t} x2={W} y2={H * t} stroke="#ffffff" strokeOpacity="0.04" strokeDasharray="4 6" />
+            ))}
+            {/* Start balance reference */}
+            <line x1="0" y1={sy(START_BALANCE)} x2={W} y2={sy(START_BALANCE)} stroke="#ffffff" strokeOpacity="0.15" strokeDasharray="6 6" />
+            {/* Area fill */}
+            <motion.path d={areaPath} fill="url(#eq-area)" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1.4, delay: 0.3 }} />
+            {/* Line */}
+            <motion.path d={linePath} fill="none" stroke="url(#eq-line)" strokeWidth="2.5" filter="url(#eq-glow)" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 2.2, ease: [0.22, 1, 0.36, 1] }} />
+            {/* End dot */}
+            <motion.circle cx={sx(points[points.length - 1].x)} cy={sy(points[points.length - 1].y)} r="6" fill={finalColor} initial={{ scale: 0 }} whileInView={{ scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: 2.3 }}>
+              <animate attributeName="r" values="6;9;6" dur="2s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite" />
+            </motion.circle>
+          </svg>
+          <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between py-2 text-[10px] font-mono text-gray-600 pointer-events-none">
+            <span>${yTicks[2].toLocaleString()}</span>
+            <span>${yTicks[1].toLocaleString()}</span>
+            <span>${yTicks[0].toLocaleString()}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-4 relative z-10">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+            <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Peak Balance</p>
+            <p className="text-base sm:text-lg font-black text-white tabular-nums">${peakY.toFixed(0)}</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+            <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Current</p>
+            <p className="text-base sm:text-lg font-black tabular-nums" style={{ color: finalColor }}>${running.toFixed(0)}</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+            <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Trades</p>
+            <p className="text-base sm:text-lg font-black text-white tabular-nums">{trades.length}</p>
+          </div>
+        </div>
+      </motion.div>
+    </section>
+  );
+};
+
+// --- P/L Heatmap: GitHub-style daily P/L grid for last 90 days ---
+const PnLHeatmap = () => {
+  const { trades, loading } = useLiveTrades();
+  if (loading) return null;
+
+  const DAYS = 90;
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const days = [];
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 86400000);
+    days.push({ date: d, pnl: 0 });
+  }
+  trades.forEach(t => {
+    const d = new Date(t.closed_at);
+    d.setUTCHours(0, 0, 0, 0);
+    const dayIdx = days.findIndex(x => x.date.getTime() === d.getTime());
+    if (dayIdx >= 0) days[dayIdx].pnl += parseResult(t.result);
+  });
+
+  const maxAbs = Math.max(1, ...days.map(d => Math.abs(d.pnl)));
+  const colorFor = (pnl) => {
+    if (pnl === 0) return 'bg-white/[0.03] border-white/5';
+    const intensity = Math.min(1, Math.abs(pnl) / maxAbs);
+    const opacity = 0.2 + intensity * 0.7;
+    if (pnl > 0) return `border-green-500/10`;
+    return `border-red-500/10`;
+  };
+  const styleFor = (pnl) => {
+    if (pnl === 0) return {};
+    const intensity = Math.min(1, Math.abs(pnl) / maxAbs);
+    const opacity = 0.15 + intensity * 0.7;
+    return { backgroundColor: pnl > 0 ? `rgba(16, 185, 129, ${opacity})` : `rgba(239, 68, 68, ${opacity})` };
+  };
+
+  // Group into weeks (columns of 7)
+  const weeks = [];
+  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
+  const totalPL = days.reduce((s, d) => s + d.pnl, 0);
+  const positiveDays = days.filter(d => d.pnl > 0).length;
+  const negativeDays = days.filter(d => d.pnl < 0).length;
+
+  return (
+    <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-20 relative">
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.2 }}
+        transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+        className="bg-white/5 border border-white/10 rounded-3xl sm:rounded-[40px] p-6 sm:p-10 md:p-14 relative overflow-hidden"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/5 border border-blue-500/10 text-blue-400 text-[10px] font-black uppercase tracking-widest mb-4">
+              90-Day Activity
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-black tracking-tighter uppercase">Daily <span className="text-gray-500">P/L Map</span></h2>
+            <p className="text-gray-500 text-sm font-medium mt-2">Each square is one trading day · hover for details</p>
+          </div>
+          <div className="flex gap-6">
+            <div>
+              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Green Days</p>
+              <p className="text-2xl font-black text-green-500 tabular-nums">{positiveDays}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Red Days</p>
+              <p className="text-2xl font-black text-red-500 tabular-nums">{negativeDays}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-1 overflow-x-auto pb-2">
+          {weeks.map((week, wi) => (
+            <div key={wi} className="flex flex-col gap-1 flex-shrink-0">
+              {week.map((day, di) => (
+                <div
+                  key={di}
+                  className={`w-4 h-4 sm:w-5 sm:h-5 rounded-[3px] border ${colorFor(day.pnl)} transition-all hover:scale-125 hover:z-10 relative group cursor-default`}
+                  style={styleFor(day.pnl)}
+                  title={`${day.date.toLocaleDateString()}: ${day.pnl >= 0 ? '+' : ''}$${day.pnl.toFixed(0)}`}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between mt-6 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+          <span>90 days ago</span>
+          <div className="flex items-center gap-2">
+            <span>Loss</span>
+            <div className="flex gap-0.5">
+              {[0.7, 0.5, 0.3, 0.15].map(o => <div key={o} className="w-3 h-3 rounded-sm" style={{ backgroundColor: `rgba(239, 68, 68, ${o})` }} />)}
+              <div className="w-3 h-3 rounded-sm bg-white/[0.03] border border-white/5" />
+              {[0.15, 0.3, 0.5, 0.7].map(o => <div key={o} className="w-3 h-3 rounded-sm" style={{ backgroundColor: `rgba(16, 185, 129, ${o})` }} />)}
+            </div>
+            <span>Profit</span>
+          </div>
+          <span>Today</span>
+        </div>
+      </motion.div>
+    </section>
+  );
+};
+
+// --- "What If" Calculator: simulate returns with custom starting capital ---
+const MASTER_RISK_PCT = 0.5; // FlexBot risks ~0.5% per trade on master account
+
+const WhatIfCalculator = () => {
+  const { trades, account, loading } = useLiveTrades();
+  const [capital, setCapital] = useState(10000);
+  const [riskPct, setRiskPct] = useState(0.5);
+  const [hoverIdx, setHoverIdx] = useState(null);
+  const svgRef = useRef(null);
+
+  if (loading || trades.length === 0) return null;
+
+  // Adjust each trade for commission/swap so master simulation matches reality.
+  const tradeSum = trades.reduce((s, t) => s + parseResult(t.result), 0);
+  const realPL = account?.equity != null ? account.equity - START_BALANCE : tradeSum;
+  const perTradeCost = (tradeSum - realPL) / trades.length;
+
+  // Convert each trade to % of master starting balance, then compound on user capital
+  // scaled by user's risk-per-trade vs master's risk-per-trade.
+  const riskMultiplier = riskPct / MASTER_RISK_PCT;
+  let running = capital;
+  let peak = capital;
+  let maxDDPct = 0;
+  const curve = [{ x: 0, y: capital, pl: 0, date: trades[0]?.closed_at }];
+  const simulated = [];
+  trades.forEach((t, i) => {
+    const tradePctOfMaster = (parseResult(t.result) - perTradeCost) / START_BALANCE;
+    const userPnl = running * tradePctOfMaster * riskMultiplier;
+    simulated.push(userPnl);
+    running += userPnl;
+    if (running > peak) peak = running;
+    const ddPct = peak > 0 ? ((peak - running) / peak) * 100 : 0;
+    if (ddPct > maxDDPct) maxDDPct = ddPct;
+    curve.push({ x: i + 1, y: running, pl: running - capital, date: t.closed_at });
+  });
+  const finalBalance = running;
+  const wins = simulated.filter(x => x > 0).length;
+  const winRate = (wins / simulated.length) * 100;
+  const returnPct = ((finalBalance - capital) / capital) * 100;
+
+  const minY = Math.min(...curve.map(p => p.y));
+  const maxY = Math.max(...curve.map(p => p.y));
+  const padY = (maxY - minY) * 0.1 || 100;
+  const yLow = minY - padY, yHigh = maxY + padY;
+  const W = 800, H = 220;
+  const sx = (x) => (x / (curve.length - 1)) * W;
+  const sy = (y) => H - ((y - yLow) / (yHigh - yLow)) * H;
+  const path = curve.map((p, i) => `${i === 0 ? 'M' : 'L'} ${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`).join(' ');
+  const color = returnPct >= 0 ? '#10b981' : '#ef4444';
+
+  const handleMove = (e) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * W;
+    const idx = Math.round((x / W) * (curve.length - 1));
+    setHoverIdx(Math.max(0, Math.min(curve.length - 1, idx)));
+  };
+  const handleLeave = () => setHoverIdx(null);
+
+  const presets = [1000, 5000, 10000, 25000, 100000];
+  const risks = [0.5, 1, 2, 3];
+  const fmtDate = (ms) => ms ? new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+  const hover = hoverIdx != null ? curve[hoverIdx] : null;
+
+  return (
+    <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-20 relative max-w-6xl">
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.2 }}
+        transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+        className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 relative overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/[0.04] to-transparent pointer-events-none" />
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[9px] font-black uppercase tracking-widest mb-2">
+            <Sparkles size={10} /> Simulator
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase mb-2">What If <span className="text-gray-500">You'd Copied?</span></h2>
+          <p className="text-gray-500 text-xs sm:text-sm font-medium mb-6">Real trades since {new Date(LIVE_START_MS).toLocaleDateString()} · adjusted for broker commission · compounded on your capital</p>
+
+          <div className="grid lg:grid-cols-5 gap-5 sm:gap-6">
+            <div className="lg:col-span-2 flex flex-col gap-4">
+              {/* Capital slider */}
+              <div>
+                <div className="flex justify-between items-baseline mb-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Starting capital</label>
+                  <span className="text-2xl sm:text-3xl font-black text-white tabular-nums">${capital.toLocaleString()}</span>
+                </div>
+                <input
+                  type="range"
+                  min="500"
+                  max="100000"
+                  step="500"
+                  value={capital}
+                  onChange={(e) => { setCapital(Number(e.target.value)); playSound('hover'); }}
+                  className="w-full accent-blue-500"
+                />
+                <div className="flex gap-1.5 mt-2 flex-wrap">
+                  {presets.map(v => (
+                    <button
+                      key={v}
+                      onClick={() => { setCapital(v); playSound('click'); }}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${capital === v ? 'bg-blue-600 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10'}`}
+                    >
+                      ${v >= 1000 ? `${v / 1000}k` : v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Risk slider */}
+              <div>
+                <div className="flex justify-between items-baseline mb-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Risk per trade</label>
+                  <span className="text-xl sm:text-2xl font-black text-white tabular-nums">{riskPct.toFixed(1)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.25"
+                  max="3"
+                  step="0.25"
+                  value={riskPct}
+                  onChange={(e) => { setRiskPct(Number(e.target.value)); playSound('hover'); }}
+                  className="w-full accent-blue-500"
+                />
+                <div className="flex gap-1.5 mt-2">
+                  {risks.map(v => (
+                    <button
+                      key={v}
+                      onClick={() => { setRiskPct(v); playSound('click'); }}
+                      className={`flex-1 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${riskPct === v ? 'bg-blue-600 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10'}`}
+                    >
+                      {v}%
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[9px] text-gray-600 mt-2">Master account uses {MASTER_RISK_PCT}% · {riskMultiplier.toFixed(1)}× leverage at current setting</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                  <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Final</p>
+                  <p className="text-base sm:text-lg font-black tabular-nums" style={{ color }}>${finalBalance.toFixed(0)}</p>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                  <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Return</p>
+                  <p className="text-base sm:text-lg font-black tabular-nums" style={{ color }}>{returnPct >= 0 ? '+' : ''}{returnPct.toFixed(1)}%</p>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                  <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Win Rate</p>
+                  <p className="text-base sm:text-lg font-black text-white tabular-nums">{winRate.toFixed(1)}%</p>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                  <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Max DD</p>
+                  <p className="text-base sm:text-lg font-black text-red-500 tabular-nums">{maxDDPct.toFixed(1)}%</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-3 bg-black/30 border border-white/10 rounded-xl p-3 sm:p-4 relative">
+              <svg
+                ref={svgRef}
+                viewBox={`0 0 ${W} ${H}`}
+                preserveAspectRatio="none"
+                className="w-full h-[200px] sm:h-[240px] cursor-crosshair"
+                onMouseMove={handleMove}
+                onMouseLeave={handleLeave}
+                onTouchMove={(e) => { const t = e.touches[0]; handleMove({ clientX: t.clientX }); }}
+                onTouchEnd={handleLeave}
+              >
+                <defs>
+                  <linearGradient id="sim-area" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+                    <stop offset="100%" stopColor={color} stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <line x1="0" y1={sy(capital)} x2={W} y2={sy(capital)} stroke="#ffffff" strokeOpacity="0.15" strokeDasharray="4 4" />
+                <path d={`${path} L ${W} ${H} L 0 ${H} Z`} fill="url(#sim-area)" />
+                <path d={path} fill="none" stroke={color} strokeWidth="2" />
+                {hover && (
+                  <>
+                    <line x1={sx(hover.x)} y1="0" x2={sx(hover.x)} y2={H} stroke="#ffffff" strokeOpacity="0.25" strokeWidth="1" strokeDasharray="3 3" />
+                    <circle cx={sx(hover.x)} cy={sy(hover.y)} r="5" fill={color} stroke="#ffffff" strokeWidth="2" />
+                  </>
+                )}
+                {!hover && (
+                  <circle cx={sx(curve.length - 1)} cy={sy(curve[curve.length - 1].y)} r="4" fill={color}>
+                    <animate attributeName="r" values="4;7;4" dur="2s" repeatCount="indefinite" />
+                  </circle>
+                )}
+              </svg>
+              {hover && (
+                <div
+                  className="absolute pointer-events-none bg-black/90 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold backdrop-blur-md shadow-xl"
+                  style={{
+                    left: `${(sx(hover.x) / W) * 100}%`,
+                    top: '8px',
+                    transform: `translateX(${hoverIdx > curve.length / 2 ? '-100%' : '0%'}) translateX(${hoverIdx > curve.length / 2 ? '-12px' : '12px'})`,
+                  }}
+                >
+                  <div className="text-gray-500 uppercase tracking-widest text-[8px] mb-1">
+                    {hoverIdx === 0 ? 'Start' : `Trade #${hoverIdx} · ${fmtDate(hover.date)}`}
+                  </div>
+                  <div className="text-white tabular-nums">${hover.y.toFixed(0)}</div>
+                  <div className="tabular-nums" style={{ color: hover.pl >= 0 ? '#10b981' : '#ef4444' }}>
+                    {hover.pl >= 0 ? '+' : ''}${hover.pl.toFixed(0)} ({hover.pl >= 0 ? '+' : ''}{((hover.pl / capital) * 100).toFixed(1)}%)
+                  </div>
+                </div>
+              )}
+              <p className="text-center text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1">{trades.length} trades · hover for details</p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </section>
+  );
+};
+
+// --- Sound Toggle Button ---
+const SoundToggle = () => {
+  const [enabled, setEnabled] = useState(() => typeof window !== 'undefined' && localStorage.getItem(SOUND_KEY) === '1');
+  const toggle = () => {
+    const next = !enabled;
+    setEnabled(next);
+    localStorage.setItem(SOUND_KEY, next ? '1' : '0');
+    if (next) playSound('click');
+  };
+  return (
+    <button
+      onClick={toggle}
+      title={enabled ? 'Sound on' : 'Sound off'}
+      className="fixed bottom-5 right-5 z-50 w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={enabled ? 'text-blue-400' : 'text-gray-500'}>
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
+        {enabled ? (
+          <>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+          </>
+        ) : (
+          <>
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </>
+        )}
+      </svg>
+    </button>
+  );
+};
 
 // --- Shared Components ---
 const TelegramSection = () => (
@@ -128,6 +840,10 @@ const SectionDivider = () => (
 );
 
 const FeaturesSection = () => {
+  const { trades } = useLiveTrades();
+  const winRate = trades.length > 0
+    ? (trades.filter(t => parseResult(t.result) > 0).length / trades.length) * 100
+    : null;
   return (
     <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-20 md:py-32 relative">
       <motion.div
@@ -171,8 +887,8 @@ const FeaturesSection = () => {
           <div className="absolute -right-6 -bottom-6 opacity-20 group-hover:scale-110 transition-transform"><TrendingUp size={140} className="text-white" /></div>
           <div className="relative z-10">
             <p className="text-[10px] font-black text-blue-100 uppercase tracking-widest mb-2 opacity-80">Verified Performance</p>
-            <h3 className="text-5xl sm:text-6xl font-black text-white tracking-tighter mb-2">74.2%</h3>
-            <p className="text-blue-100 font-bold text-sm">Win rate across our master account. Every trade is verifiable on Myfxbook.</p>
+            <h3 className="text-5xl sm:text-6xl font-black text-white tracking-tighter mb-2 tabular-nums">{winRate != null ? `${winRate.toFixed(1)}%` : '—'}</h3>
+            <p className="text-blue-100 font-bold text-sm">Live win rate from our master account. Every trade verifiable on the public results page.</p>
           </div>
         </motion.div>
       </div>
@@ -717,6 +1433,11 @@ const Navbar = ({ onBuyClick }) => {
 const LandingPage = ({ onBuyClick, tradingLogs }) => {
   return (
     <div className="relative">
+      <SEO
+        title="FlexBot AI — Institutional Gold (XAUUSD) Trading EA for MT5"
+        description="Institutional-grade gold trading AI for MT5. Audited live results, transparent master account, copy directly to your broker. Built for FTMO and prop-firm challenges."
+        path="/"
+      />
       <header className="relative w-full lg:h-[calc(100vh-60px)] flex flex-col items-center justify-center overflow-visible">
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-blue-900/5 to-transparent"></div>
@@ -752,7 +1473,7 @@ const LandingPage = ({ onBuyClick, tradingLogs }) => {
                     <span className="text-[6px] mt-0.5 opacity-70">LIMITED SLOTS</span>
                   </div>
                 </div>
-                <button onClick={onBuyClick} className="bg-blue-600 hover:bg-blue-500 text-white px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl font-black text-sm sm:text-base transition-all shadow-[0_10px_50px_rgba(37,99,235,0.4)] hover:-translate-y-1 group flex items-center justify-center gap-3">GET FLEXBOT AI <ArrowUpRight className="group-hover:translate-x-1 transition-transform" size={18} /></button>
+                <button onClick={() => { playSound('click'); onBuyClick(); }} onMouseEnter={() => playSound('hover')} className="bg-blue-600 hover:bg-blue-500 text-white px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl font-black text-sm sm:text-base transition-all shadow-[0_10px_50px_rgba(37,99,235,0.4)] hover:-translate-y-1 group flex items-center justify-center gap-3">GET FLEXBOT AI <ArrowUpRight className="group-hover:translate-x-1 transition-transform" size={18} /></button>
                 <a href="#how-it-works" className="bg-white/5 hover:bg-white/10 border border-white/10 px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl font-black text-sm sm:text-base transition-all backdrop-blur-md flex items-center justify-center">HOW IT WORKS</a>
               </div>
             </motion.div>
@@ -785,20 +1506,29 @@ const LandingPage = ({ onBuyClick, tradingLogs }) => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-blue-500/10 blur-xl rounded-full"></div>
       </div>
       
+      <EquityCurveSection />
+      <SectionDivider />
+
       <PerformanceSection />
       <SectionDivider />
-      
+
+      <WhatIfCalculator />
+      <SectionDivider />
+
+      <PnLHeatmap />
+      <SectionDivider />
+
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-blue-600/[0.01] pointer-events-none"></div>
         <HowItWorks />
       </div>
-      
+
       <SectionDivider />
       <FeaturesSection />
-      
+
       <SectionDivider />
       <TelegramSection />
-      
+
       <SectionDivider />
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-blue-600/[0.01] pointer-events-none"></div>
@@ -1052,7 +1782,7 @@ const TradingViewAnalysisWidget = ({ activeSignal, masterStats }) => {
             <p className="text-[10px] font-black text-white tabular-nums">{masterStats?.tradeCount || 0}</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-3 text-center backdrop-blur-sm">
-            <p className="text-[7px] font-black text-gray-500 uppercase mb-1.5 tracking-tighter">Max DD</p>
+            <p className="text-[7px] font-black text-gray-500 uppercase mb-1.5 tracking-tighter">Drawdown</p>
             <p className="text-[10px] font-black text-red-400 tabular-nums">{masterStats ? `${masterStats.maxDrawdown.toFixed(2)}%` : '—'}</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-3 text-center backdrop-blur-sm">
@@ -1260,6 +1990,11 @@ const ResultsPage = () => {
 
   return (
     <div className="relative min-h-screen pt-12 sm:pt-24 pb-12 sm:pb-20">
+      <SEO
+        title="Live Results — FlexBot AI Audited Gold Trading Performance"
+        description="Verified live MT5 trading results for FlexBot AI. Real master account performance on XAUUSD, updated every 30 seconds. Full transparency, no demo numbers."
+        path="/results"
+      />
       <div className="absolute inset-0 bg-blue-600/[0.02] pointer-events-none"></div>
       <div className="container mx-auto px-4 sm:px-6 relative z-10">
         <div className="text-center mb-10 sm:mb-16">
@@ -1516,6 +2251,11 @@ const MyfxbookPage = () => {
 
   return (
     <div className="relative min-h-screen pt-12 sm:pt-24 pb-12 sm:pb-20">
+      <SEO
+        title="Myfxbook Verification — FlexBot AI Phase Tracking"
+        description="Track FlexBot AI's prop-firm challenge phases verified on Myfxbook. Independent third-party verification of every stage of the journey."
+        path="/myfxbook"
+      />
       <div className="absolute inset-0 bg-blue-600/[0.02] pointer-events-none"></div>
       <div className="container mx-auto px-4 sm:px-6 relative z-10">
         {/* Hero */}
@@ -1655,6 +2395,11 @@ const LeaderboardPage = () => {
 
   return (
     <div className="relative min-h-screen py-12 sm:py-16 px-4 sm:px-6">
+      <SEO
+        title="Referral Leaderboard — FlexBot AI"
+        description="Monthly FlexBot AI referral leaderboard. Top inviters compete for cash prizes and bonuses. Live ranking updated in real time."
+        path="/leaderboard"
+      />
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center pt-4 pb-8 sm:pb-10 px-4">
@@ -1788,15 +2533,9 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
           const balance = tradesData.account?.balance || START_BALANCE;
           const equity = tradesData.account?.equity || balance;
           const totalProfit = equity - START_BALANCE;
-          // Max drawdown from running balance since live start
-          let peak = START_BALANCE, running = START_BALANCE, maxDD = 0;
-          [...trades].reverse().forEach(t => {
-            running += parseR(t.result);
-            if (running > peak) peak = running;
-            const dd = peak - running;
-            if (dd > maxDD) maxDD = dd;
-          });
-          const maxDDPct = (maxDD / START_BALANCE) * 100;
+          // Max drawdown from initial deposit (FTMO-style "overall loss"):
+          // (initial - current equity) / initial * 100, floored at 0 when in profit.
+          const maxDDPct = Math.max(0, (START_BALANCE - equity) / START_BALANCE * 100);
           setMasterStats({
             equity,
             balance,
@@ -1815,23 +2554,22 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // --- MetaTrader Account State ---
+  // --- FlexBot Account State (uses our own backend, not MetaApi) ---
   const [isLinked, setIsLinked] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
+  const [linkError, setLinkError] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [activeTab, setActiveTab] = useState('Overview');
   const [formData, setFormData] = useState({
-    server: '',
     accountId: '',
-    password: '',
-    platform: 'mt5'
+    startBalance: '100000',
   });
   const [accountInfo, setAccountInfo] = useState({
     id: '',
     server: '',
-    balance: 10000.00,
-    equity: 10000.00,
-    profit: 0.00,
+    balance: 0,
+    equity: 0,
+    profit: 0,
     trades: [],
     metrics: {
       winRate: 0,
@@ -1839,191 +2577,106 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
       totalTrades: 0,
       averageWin: 0,
       averageLoss: 0,
-      maxDrawdown: 0
-    }
+      maxDrawdown: 0,
+    },
   });
 
-  // Auto-link account if credentials exist in localStorage
+  // Auto-link if login saved in localStorage
   useEffect(() => {
-    const savedCreds = localStorage.getItem('metaTrader_creds');
-    if (savedCreds && !isLinked) {
-      try {
-        const credentials = JSON.parse(savedCreds);
-        setFormData(prev => ({
-          ...prev,
-          server: credentials.server || '',
-          accountId: credentials.accountId || '',
-          password: credentials.password || '',
-          platform: credentials.platform || 'mt5'
-        }));
-        
-        console.log("[AutoLink] Credentials found, connecting...");
-        
-        const autoLink = async () => {
-          setIsLinking(true);
-          try {
-            const linkResult = await metaApiService.linkAccount(credentials);
-            if (linkResult) {
-              setAccountInfo(prev => ({
-                ...prev,
-                id: linkResult.id,
-                server: credentials.server,
-                isSimulated: false
-              }));
-              setIsLinked(true);
-              console.log("[AutoLink] Successfully connected to account:", linkResult.id);
-            }
-          } catch (err) {
-            console.error("[AutoLink] Error connecting:", err);
-          } finally {
-            setIsLinking(false);
-          }
-        };
-        autoLink();
-      } catch (e) {
-        console.error("Failed to parse saved credentials", e);
-        localStorage.removeItem('metaTrader_creds');
-      }
+    const savedLogin = localStorage.getItem('flexbot_login');
+    const savedBalance = localStorage.getItem('flexbot_start_balance');
+    if (savedLogin && !isLinked) {
+      setFormData({ accountId: savedLogin, startBalance: savedBalance || '100000' });
+      const autoLink = async () => {
+        setIsLinking(true);
+        try {
+          const res = await fetch(`${SERVER_URL}/api/trades?limit=2000`);
+          const json = await res.json();
+          if (!json.ok) return;
+          const trades = filterTradesForLogin(json.trades, savedLogin);
+          if (trades.length === 0) return;
+          const startBal = Number(savedBalance) || 100000;
+          const isMaster = json.account && String(json.account.login) === savedLogin;
+          const stats = computeStatsFromTrades(trades, startBal, isMaster ? json.account : null);
+          setAccountInfo({ id: savedLogin, server: 'FlexBot Tracked', isSimulated: false, ...stats });
+          setIsLinked(true);
+        } catch (err) {
+          console.error('[AutoLink] Error:', err);
+        } finally {
+          setIsLinking(false);
+        }
+      };
+      autoLink();
     }
   }, [isLinked]);
 
   const handleLinkAccount = async (e) => {
     if (e) e.preventDefault();
     setIsLinking(true);
-    
-    const credentials = {
-      server: formData.server,
-      accountId: formData.accountId,
-      password: formData.password,
-      platform: formData.platform
-    };
+    setLinkError('');
+
+    const login = formData.accountId.trim();
+    const startBal = Number(formData.startBalance) || 100000;
+    if (!login) { setLinkError('Enter your MT5 login number.'); setIsLinking(false); return; }
 
     try {
-      const linkResult = await metaApiService.linkAccount(credentials);
-      
-      if (linkResult && !linkResult.error) {
-        if (rememberMe) {
-          localStorage.setItem('metaTrader_creds', JSON.stringify(credentials));
-        } else {
-          localStorage.removeItem('metaTrader_creds');
-        }
-
-        setIsLinked(true);
-        setAccountInfo(prev => ({
-          ...prev,
-          id: linkResult.id,
-          server: credentials.server,
-          platform: credentials.platform,
-          isSimulated: linkResult.simulated,
-          balance: prev.balance || 0,
-          equity: prev.equity || 0,
-          profit: prev.profit || 0,
-          trades: []
-        }));
-
-        // Give the account time to boot on the server
-        setTimeout(() => {
-          // De useEffect zal dit oppakken omdat isLinked is veranderd
-        }, 2000);
-
-      } else {
-        alert("Could not connect. Please check your login credentials, server name and password.");
+      const res = await fetch(`${SERVER_URL}/api/trades?limit=2000`);
+      const json = await res.json();
+      if (!json.ok) throw new Error('Backend unreachable');
+      const trades = filterTradesForLogin(json.trades, login);
+      if (trades.length === 0) {
+        setLinkError(`No trades found for account ${login}. Is your EA running and pushing trades?`);
+        setIsLinking(false);
+        return;
       }
+      const isMaster = json.account && String(json.account.login) === login;
+      const stats = computeStatsFromTrades(trades, startBal, isMaster ? json.account : null);
+      if (rememberMe) {
+        localStorage.setItem('flexbot_login', login);
+        localStorage.setItem('flexbot_start_balance', String(startBal));
+      } else {
+        localStorage.removeItem('flexbot_login');
+        localStorage.removeItem('flexbot_start_balance');
+      }
+      setAccountInfo({ id: login, server: 'FlexBot Tracked', isSimulated: false, ...stats });
+      setIsLinked(true);
     } catch (err) {
-      console.error("Link error:", err);
-      alert("Something went wrong while linking your account.");
+      console.error('[Link] Error:', err);
+      setLinkError('Something went wrong fetching your trades. Try again.');
     } finally {
       setIsLinking(false);
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('metaTrader_creds');
+    localStorage.removeItem('flexbot_login');
+    localStorage.removeItem('flexbot_start_balance');
     setIsLinked(false);
-    setFormData({
-      server: '',
-      accountId: '',
-      password: '',
-      platform: 'mt5'
-    });
+    setFormData({ accountId: '', startBalance: '100000' });
     setAccountInfo({
-      id: '',
-      server: '',
-      balance: 10000.00,
-      equity: 10000.00,
-      profit: 0.00,
-      trades: [],
-      metrics: {
-        winRate: 0,
-        profitFactor: 0,
-        totalTrades: 0,
-        averageWin: 0,
-        averageLoss: 0,
-        maxDrawdown: 0
-      }
+      id: '', server: '', balance: 0, equity: 0, profit: 0, trades: [],
+      metrics: { winRate: 0, profitFactor: 0, totalTrades: 0, averageWin: 0, averageLoss: 0, maxDrawdown: 0 },
     });
   };
 
+  // Poll backend every 30s to refresh stats
   useEffect(() => {
-    if (isLinked && accountInfo.id) {
-      const fetchData = async () => {
-        const info = await metaApiService.getAccountInformation(accountInfo.id);
-        const positions = await metaApiService.getOpenPositions(accountInfo.id);
-        const metrics = await metaApiService.getAccountMetrics(accountInfo.id);
-
-        if (info || metrics) {
-          setAccountInfo(prev => ({
-            ...prev,
-            balance: info?.balance ?? metrics?.balance ?? prev.balance ?? 0,
-            equity: info?.equity ?? metrics?.equity ?? prev.equity ?? 0,
-            profit: info?.profit ?? (metrics ? (metrics.equity - metrics.balance) : prev.profit) ?? 0,
-            isSimulated: false,
-            metrics: metrics ? {
-              winRate: metrics.winRate || 0,
-              profitFactor: metrics.profitFactor || 0,
-              totalTrades: metrics.totalTrades || 0,
-              averageWin: metrics.averageWin || 0,
-              averageLoss: metrics.averageLoss || 0,
-              maxDrawdown: metrics.maxDrawdown || 0,
-              deposits: metrics.deposits || 0,
-              withdrawals: metrics.withdrawals || 0,
-              totalProfit: metrics.totalProfit || 0,
-              dailyGrowth: metrics.dailyGrowth || [],
-              trades: metrics.trades || []
-            } : prev.metrics,
-            trades: (positions || []).map(p => ({
-              id: `#${p.id}`,
-              pair: p.symbol || 'N/A',
-              type: p.type?.includes('BUY') ? 'BUY' : 'SELL',
-              size: (p.volume || 0).toFixed(2),
-              entry: (p.openPrice || 0).toFixed(2),
-              current: (p.currentPrice || 0).toFixed(2),
-              pnl: (p.unrealizedProfit || 0).toFixed(2),
-              status: 'Active',
-              time: p.time || new Date().toISOString()
-            }))
-          }));
-        } else {
-          // Alleen simuleren als we ECHT niks hebben van geen enkele API
-          console.warn("[Dashboard] No data from Trading and Stats API, falling back to simulation.");
-          setAccountInfo(prev => {
-            const baseBalance = prev.balance || 15000;
-            const newProfit = (prev.profit || 0) + (Math.random() * 2 - 1);
-            return {
-              ...prev,
-              balance: baseBalance,
-              equity: baseBalance + newProfit,
-              profit: newProfit,
-              isSimulated: true
-            };
-          });
-        }
-      };
-
-      fetchData();
-      const interval = setInterval(fetchData, 5000);
-      return () => clearInterval(interval);
-    }
+    if (!isLinked || !accountInfo.id) return;
+    const startBal = Number(localStorage.getItem('flexbot_start_balance')) || 100000;
+    const refresh = async () => {
+      try {
+        const res = await fetch(`${SERVER_URL}/api/trades?limit=2000`);
+        const json = await res.json();
+        if (!json.ok) return;
+        const trades = filterTradesForLogin(json.trades, accountInfo.id);
+        if (trades.length === 0) return;
+        const isMaster = json.account && String(json.account.login) === accountInfo.id;
+        const stats = computeStatsFromTrades(trades, startBal, isMaster ? json.account : null);
+        setAccountInfo(prev => ({ ...prev, ...stats }));
+      } catch (err) { /* noop */ }
+    };
+    const interval = setInterval(refresh, 30000);
+    return () => clearInterval(interval);
   }, [isLinked, accountInfo.id]);
 
   useEffect(() => {
@@ -2091,6 +2744,10 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
 
   return (
     <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-10 flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-10 relative">
+      <Helmet>
+        <title>Dashboard — FlexBot AI</title>
+        <meta name="robots" content="noindex,nofollow" />
+      </Helmet>
       <aside className="w-full lg:w-72 flex flex-col gap-4 sm:gap-6 lg:sticky lg:top-32 lg:self-start">
         {/* Navigation Card */}
         <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-[32px] p-4 sm:p-6 shadow-xl relative overflow-hidden group">
@@ -2126,76 +2783,67 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center text-blue-500 border border-blue-500/20 shadow-inner"><Wallet size={20} /></div>
               <div>
-                <h3 className="text-[10px] font-black text-white uppercase tracking-tight">Link MetaTrader</h3>
-                <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest mt-0.5 italic">Login with account number</p>
+                <h3 className="text-[10px] font-black text-white uppercase tracking-tight">View My Stats</h3>
+                <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest mt-0.5 italic">Enter your MT5 login</p>
               </div>
             </div>
-            
+
+            <p className="text-[10px] font-medium text-gray-500 leading-relaxed mb-4">
+              Your EA pushes trades to FlexBot's server automatically. Enter your MT5 login number to view your tracked stats.
+            </p>
+
             <form onSubmit={handleLinkAccount} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Broker Server</label>
-                <input 
-                  required 
-                  name="server" 
-                  type="text" 
-                  value={formData.server}
-                  onChange={(e) => setFormData({...formData, server: e.target.value})}
-                  placeholder="e.g. Vantage-Live 3" 
-                  className="w-full bg-white/[0.03] border border-white/10 px-4 py-2.5 rounded-xl text-white text-[10px] font-bold focus:outline-none focus:border-blue-500 transition-all placeholder:text-gray-700 shadow-inner" 
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">MT5 Account Number</label>
-                <input 
-                  required 
-                  name="accountId" 
-                  type="text" 
+                <label className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">MT5 Login Number</label>
+                <input
+                  required
+                  name="accountId"
+                  type="text"
+                  inputMode="numeric"
                   value={formData.accountId}
-                  onChange={(e) => setFormData({...formData, accountId: e.target.value})}
-                  placeholder="e.g. 1234567" 
-                  className="w-full bg-white/[0.03] border border-white/10 px-4 py-2.5 rounded-xl text-white text-[10px] font-bold focus:outline-none focus:border-blue-500 transition-all placeholder:text-gray-700 shadow-inner" 
+                  onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
+                  placeholder="e.g. 12033719"
+                  className="w-full bg-white/[0.03] border border-white/10 px-4 py-2.5 rounded-xl text-white text-[10px] font-bold focus:outline-none focus:border-blue-500 transition-all placeholder:text-gray-700 shadow-inner"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Master Password</label>
-                <input 
-                  required 
-                  name="password" 
-                  type="password" 
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  placeholder="••••••••" 
-                  className="w-full bg-white/[0.03] border border-white/10 px-4 py-2.5 rounded-xl text-white text-[10px] font-bold focus:outline-none focus:border-blue-500 transition-all placeholder:text-gray-700 shadow-inner" 
+                <label className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Starting Balance ($)</label>
+                <input
+                  required
+                  name="startBalance"
+                  type="number"
+                  min="100"
+                  step="100"
+                  value={formData.startBalance}
+                  onChange={(e) => setFormData({ ...formData, startBalance: e.target.value })}
+                  placeholder="100000"
+                  className="w-full bg-white/[0.03] border border-white/10 px-4 py-2.5 rounded-xl text-white text-[10px] font-bold focus:outline-none focus:border-blue-500 transition-all placeholder:text-gray-700 shadow-inner"
                 />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Platform</label>
-                <select 
-                  name="platform" 
-                  value={formData.platform}
-                  onChange={(e) => setFormData({...formData, platform: e.target.value})}
-                  className="w-full bg-white/[0.03] border border-white/10 px-4 py-2.5 rounded-xl text-white text-[10px] font-bold focus:outline-none focus:border-blue-500 transition-all shadow-inner appearance-none cursor-pointer"
-                >
-                  <option value="mt5" className="bg-[#0a0a0a]">MT5 (MetaTrader 5)</option>
-                </select>
+                <p className="text-[8px] text-gray-600 ml-1 mt-1">Used to compute return % and drawdown</p>
               </div>
 
+              {linkError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold px-3 py-2 rounded-lg">
+                  {linkError}
+                </div>
+              )}
+
               <div className="flex items-center gap-2 px-1 py-1">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   id="rememberMe"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-3 h-3 rounded border-white/10 bg-white/5 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                 />
-                <label htmlFor="rememberMe" className="text-[9px] font-black text-gray-400 uppercase tracking-widest cursor-pointer select-none">Remember password</label>
+                <label htmlFor="rememberMe" className="text-[9px] font-black text-gray-400 uppercase tracking-widest cursor-pointer select-none">Remember</label>
               </div>
 
               <button disabled={isLinking} type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-black text-[10px] tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 mt-2 active:scale-[0.98]">
                 {isLinking ? (
                   <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <>LINK ACCOUNT <ArrowUpRight size={14} /></>
+                  <>SHOW MY STATS <ArrowUpRight size={14} /></>
                 )}
               </button>
             </form>
@@ -2391,7 +3039,7 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
                   </p>
                   <div className="space-y-5">
                     {[
-                      { label: 'Max Drawdown', val: isLinked ? `${Math.min(accountInfo.metrics?.maxDrawdown || 0, 100).toFixed(2)}%` : '0.00%', sub: 'Risk Exposure', color: 'text-white' },
+                      { label: 'Drawdown', val: isLinked ? `${Math.min(accountInfo.metrics?.maxDrawdown || 0, 100).toFixed(2)}%` : '0.00%', sub: 'Risk Exposure', color: 'text-white' },
                       { label: 'Win Rate', val: isLinked ? `${(accountInfo.metrics?.winRate || 0).toFixed(1)}%` : '0%', sub: 'Accuracy', color: 'text-blue-500' },
                       { label: 'Profit Factor', val: isLinked ? (accountInfo.metrics?.profitFactor || 0).toFixed(2) : '0.00', sub: 'Efficiency', color: 'text-white' },
                       { label: 'Total Orders', val: isLinked ? (accountInfo.metrics?.totalTrades || 0).toString() : '0', sub: 'Verified Trades', color: 'text-white' }
@@ -2726,7 +3374,7 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
                 <p className="text-[10px] font-bold text-green-500 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>Live Connection</p>
               </div>
               <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-[32px] p-4 sm:p-8 relative overflow-hidden group transition-all hover:bg-white/[0.07]">
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Max Drawdown</p>
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Drawdown</p>
                 <h3 className="text-xl sm:text-3xl font-black mb-2 tracking-tighter text-red-500 tabular-nums">
                   {isLinked ? `${Math.min(accountInfo.metrics?.maxDrawdown || 0, 100).toFixed(2)}%` : (masterStats ? `${masterStats.maxDrawdown.toFixed(2)}%` : '—')}
                 </h3>
@@ -2895,6 +3543,11 @@ const Dashboard = ({ tradingLogs, onBuyClick }) => {
 const ContractPage = ({ onBuyClick }) => {
   return (
     <div className="relative min-h-screen py-12 sm:py-24 px-4 sm:px-6">
+      <SEO
+        title="How It Works — FlexBot AI Expert Advisor Installation"
+        description="Learn how FlexBot AI works: install the Expert Advisor on your MT5, connect to your own broker, and the AI copies institutional gold trades automatically."
+        path="/how-it-works"
+      />
       <div className="absolute inset-0 bg-blue-600/[0.02] pointer-events-none"></div>
       <div className="container mx-auto max-w-6xl relative z-10">
 
@@ -3264,7 +3917,9 @@ function App() {
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30 relative overflow-x-hidden">
       <BackgroundEffects />
+      <SoundToggle />
       <div className="relative z-10">
+        <LiveTradeTicker />
         <Navbar onBuyClick={() => setShowPaymentModal(true)} />
         <PaymentModal isOpen={showPaymentModal} step={paymentStep} onSelect={handleSelectPlan} onConfirm={confirmPayment} onClose={closeModal} selectedPlan={selectedPlan} usdtAddress={usdtAddress} />
         <Routes>

@@ -7,8 +7,9 @@
     <meta name="theme-color" content="#050505" />
     <meta
       name="description"
-      content="FlexBot AI — Institutional-grade gold (XAUUSD) trading AI. Audited live results, transparent master account, copy directly to your MT5."
+      content="FlexBot AI — Institutional-grade gold (XAUUSD) trading AI for MT5. Audited live results, transparent master account, copy directly to your broker. Built for FTMO and prop-firm challenges."
     />
+    <link rel="canonical" href="https://flexbot.ai/" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/FLEX.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
@@ -30,6 +31,41 @@
     <meta name="twitter:image" content="https://flexbot.ai/FLEX.png" />
 
     <title>FlexBot AI — Institutional Gold Trading</title>
+
+    <!-- Structured Data: Organization + Product -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://flexbot.ai/#organization",
+          "name": "FlexBot AI",
+          "url": "https://flexbot.ai",
+          "logo": "https://flexbot.ai/FLEX.png",
+          "description": "Institutional-grade gold (XAUUSD) trading AI delivered as an MT5 Expert Advisor.",
+          "sameAs": ["https://t.me/flexbotcommunity"]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://flexbot.ai/#website",
+          "url": "https://flexbot.ai",
+          "name": "FlexBot AI",
+          "publisher": { "@id": "https://flexbot.ai/#organization" }
+        },
+        {
+          "@type": "Product",
+          "name": "FlexBot AI Expert Advisor",
+          "description": "Institutional-grade gold (XAUUSD) trading AI for MetaTrader 5. Copies a verified master account's signals directly to your own broker account.",
+          "brand": { "@id": "https://flexbot.ai/#organization" },
+          "category": "Trading Software",
+          "url": "https://flexbot.ai/how-it-works",
+          "image": "https://flexbot.ai/FLEX.png"
+        }
+      ]
+    }
+    </script>
+
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-RK3L3DEJ6C"></script>
     <script>
