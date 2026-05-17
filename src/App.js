@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { toPng } from 'html-to-image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wallet, TrendingUp, Shield, Cpu, Activity, DollarSign,
@@ -469,12 +470,9 @@ const PnLHeatmap = () => {
 };
 
 // --- "What If" Calculator: simulate returns with custom starting capital ---
-const MASTER_RISK_PCT = 0.5; // FlexBot risks ~0.5% per trade on master account
-
 const WhatIfCalculator = () => {
   const { trades, account, loading } = useLiveTrades();
   const [capital, setCapital] = useState(10000);
-  const [riskPct, setRiskPct] = useState(0.5);
   const [hoverIdx, setHoverIdx] = useState(null);
   const svgRef = useRef(null);
 
@@ -485,9 +483,7 @@ const WhatIfCalculator = () => {
   const realPL = account?.equity != null ? account.equity - START_BALANCE : tradeSum;
   const perTradeCost = (tradeSum - realPL) / trades.length;
 
-  // Convert each trade to % of master starting balance, then compound on user capital
-  // scaled by user's risk-per-trade vs master's risk-per-trade.
-  const riskMultiplier = riskPct / MASTER_RISK_PCT;
+  // Each trade is a % move on master starting balance; compound on user capital.
   let running = capital;
   let peak = capital;
   let maxDDPct = 0;
@@ -495,7 +491,7 @@ const WhatIfCalculator = () => {
   const simulated = [];
   trades.forEach((t, i) => {
     const tradePctOfMaster = (parseResult(t.result) - perTradeCost) / START_BALANCE;
-    const userPnl = running * tradePctOfMaster * riskMultiplier;
+    const userPnl = running * tradePctOfMaster;
     simulated.push(userPnl);
     running += userPnl;
     if (running > peak) peak = running;
@@ -529,7 +525,6 @@ const WhatIfCalculator = () => {
   const handleLeave = () => setHoverIdx(null);
 
   const presets = [1000, 5000, 10000, 25000, 100000];
-  const risks = [0.5, 1, 2, 3];
   const fmtDate = (ms) => ms ? new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
   const hover = hoverIdx != null ? curve[hoverIdx] : null;
 
@@ -578,35 +573,6 @@ const WhatIfCalculator = () => {
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Risk slider */}
-              <div>
-                <div className="flex justify-between items-baseline mb-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Risk per trade</label>
-                  <span className="text-xl sm:text-2xl font-black text-white tabular-nums">{riskPct.toFixed(1)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.25"
-                  max="3"
-                  step="0.25"
-                  value={riskPct}
-                  onChange={(e) => { setRiskPct(Number(e.target.value)); playSound('hover'); }}
-                  className="w-full accent-blue-500"
-                />
-                <div className="flex gap-1.5 mt-2">
-                  {risks.map(v => (
-                    <button
-                      key={v}
-                      onClick={() => { setRiskPct(v); playSound('click'); }}
-                      className={`flex-1 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${riskPct === v ? 'bg-blue-600 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10'}`}
-                    >
-                      {v}%
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[9px] text-gray-600 mt-2">Master account uses {MASTER_RISK_PCT}% · {riskMultiplier.toFixed(1)}× leverage at current setting</p>
               </div>
 
               <div className="grid grid-cols-2 gap-2 mt-2">
@@ -691,6 +657,30 @@ const WhatIfCalculator = () => {
 // --- Trading Report (daily or weekly — mirrors the template image) ---
 const ReportPage = ({ period = 'week' }) => {
   const { trades, account, loading } = useLiveTrades();
+  const cardRef = useRef(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!cardRef.current || downloading) return;
+    setDownloading(true);
+    try {
+      const dataUrl = await toPng(cardRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: '#050505',
+      });
+      const link = document.createElement('a');
+      const datePart = new Date().toISOString().slice(0, 10);
+      link.download = `flexbot-${period}-report-${datePart}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('[Report download] failed:', err);
+      alert('Could not generate image. Try again or use a screenshot.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const now = new Date();
   let rangeStart, rangeEnd;
@@ -759,6 +749,35 @@ const ReportPage = ({ period = 'week' }) => {
     });
   }
 
+  // Cumulative P/L path across the week — drives mini equity curve + sparklines
+  const equityPath = (() => {
+    let running = 0;
+    const pts = [{ x: 0, y: 0 }];
+    weekTrades.forEach((t, i) => {
+      running += t._r;
+      pts.push({ x: i + 1, y: running });
+    });
+    return pts;
+  })();
+  const peakWeek = Math.max(0, ...equityPath.map(p => p.y));
+  const troughWeek = Math.min(0, ...equityPath.map(p => p.y));
+  const bestTradeIdx = weekTrades.reduce((bi, t, i) => weekTrades[bi]?._r > t._r ? bi : i, 0);
+  const worstTradeIdx = weekTrades.reduce((wi, t, i) => weekTrades[wi]?._r < t._r ? wi : i, 0);
+
+  // Build a small sparkline path from an array of {x,y} points within a box.
+  const pathFromPoints = (pts, W, H, pad = 2) => {
+    if (pts.length < 2) return `M 0 ${H / 2} L ${W} ${H / 2}`;
+    const min = Math.min(...pts.map(p => p.y));
+    const max = Math.max(...pts.map(p => p.y));
+    const range = max - min || 1;
+    const xmax = pts.length - 1;
+    return pts.map((p, i) => {
+      const x = (i / xmax) * (W - pad * 2) + pad;
+      const y = H - pad - ((p.y - min) / range) * (H - pad * 2);
+      return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    }).join(' ');
+  };
+
   const wins = weekTrades.filter(t => t._r > 0);
   const losses = weekTrades.filter(t => t._r < 0);
   const grossProfit = wins.reduce((s, t) => s + t._r, 0);
@@ -801,10 +820,10 @@ const ReportPage = ({ period = 'week' }) => {
   const summaryLines = weekTrades.length === 0
     ? [`Quiet ${periodLabel} — no closed trades yet`, 'Bot is in standby mode', `Check back at ${period === 'day' ? 'day' : 'week'} end`]
     : [
-        netResult >= 0 ? `Net profit of $${netResult.toFixed(0)} ${periodLabel}` : `Net loss of $${Math.abs(netResult).toFixed(0)} — drawdown contained`,
+        netResult >= 0 ? `Net profit of $${netResult.toFixed(0)} ${periodLabel}` : `Net loss of $${Math.abs(netResult).toFixed(0)} — tough ${period === 'day' ? 'session' : 'period'}, reviewing setups`,
         bestSlot && bestSlot.count > 0 ? `Strongest ${period === 'day' ? 'session' : 'day'}: ${bestSlot.name} with ${bestSlot.count} trade${bestSlot.count > 1 ? 's' : ''}` : `Trades spread evenly across ${periodLabel}`,
         winRate >= 60 ? `Strong win rate of ${winRate.toFixed(0)}%` : winRate >= 40 ? `Balanced ${winRate.toFixed(0)}% win rate, R:R doing the work` : `Tight discipline despite ${winRate.toFixed(0)}% win rate`,
-        'Risk per trade kept inside 0.5%',
+        'FTMO compliant risk management',
       ];
 
   const fmtDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
@@ -816,51 +835,146 @@ const ReportPage = ({ period = 'week' }) => {
         description={`FlexBot AI ${period === 'day' ? 'daily' : 'weekly'} XAUUSD trading report. Live performance, ${period === 'day' ? 'session' : 'daily'} breakdown, win rate, and best/worst trades.`}
         path={period === 'day' ? '/daily-report' : '/weekly-report'}
       />
-      <div className="max-w-[760px] mx-auto" id="report-card">
-        {/* Outer frame */}
-        <div className="bg-gradient-to-b from-[#0a1a3a] via-[#0a1530] to-[#050b1f] border border-cyan-500/30 rounded-3xl p-5 sm:p-8 shadow-[0_0_60px_rgba(34,211,238,0.15)] relative">
+      <div className="mx-auto" style={{ maxWidth: 1080 }}>
+        {/* Download bar (outside the captured card) */}
+        <div className="flex justify-between items-center mb-3 gap-3 flex-wrap">
+          <p className="text-[9px] font-bold text-gray-500 tracking-widest uppercase">
+            Scroll sideways on mobile · download stays full-width
+          </p>
+          <button
+            onClick={handleDownload}
+            disabled={downloading || loading || trades.length === 0}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-white/5 disabled:text-gray-600 text-white px-4 py-2 rounded-xl font-black text-[10px] tracking-widest uppercase transition-all shadow-lg disabled:shadow-none disabled:cursor-not-allowed"
+          >
+            <Download size={14} />
+            {downloading ? 'Generating…' : 'Download PNG'}
+          </button>
+        </div>
+
+        {/* Horizontal scroll on small viewports — keeps locked-desktop layout */}
+        <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 pb-2">
+          {/* Captured card — locked to desktop layout, no responsive variants */}
+          <div ref={cardRef} id="report-card" style={{ width: 1080 }} className="bg-gradient-to-b from-[#0a1a3a] via-[#0a1530] to-[#050b1f] border border-cyan-500/30 rounded-3xl p-9 shadow-[0_0_60px_rgba(34,211,238,0.15)] relative overflow-hidden">
           <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{ background: 'radial-gradient(circle at top, rgba(34,211,238,0.05), transparent 60%)' }} />
+          {/* Subtle dotted-grid pattern background */}
+          <div
+            className="absolute inset-0 rounded-3xl pointer-events-none opacity-[0.06]"
+            style={{ backgroundImage: 'radial-gradient(rgba(34,211,238,0.6) 1px, transparent 1px)', backgroundSize: '24px 24px' }}
+          />
+          {/* Decorative corner brackets */}
+          {[
+            { top: 12, left: 12, rotate: 0 },
+            { top: 12, right: 12, rotate: 90 },
+            { bottom: 12, right: 12, rotate: 180 },
+            { bottom: 12, left: 12, rotate: 270 },
+          ].map((pos, i) => (
+            <svg key={i} width="28" height="28" viewBox="0 0 28 28" className="absolute pointer-events-none" style={{ ...pos, transform: `rotate(${pos.rotate}deg)` }}>
+              <path d="M 2 12 L 2 2 L 12 2" stroke="rgba(34,211,238,0.4)" strokeWidth="2" fill="none" strokeLinecap="round" />
+            </svg>
+          ))}
 
           {/* Header */}
-          <div className="text-center mb-6 relative z-10">
+          <div className="text-center mb-5 relative z-10">
             <div className="flex items-center justify-center gap-4 mb-1">
               <div className="h-px flex-1 max-w-[80px] bg-gradient-to-r from-transparent to-cyan-400/50" />
-              <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white" style={{ textShadow: '0 0 20px rgba(255,255,255,0.3)' }}>
+              <h1 className="text-4xl font-black tracking-tight text-white" style={{ textShadow: '0 0 20px rgba(255,255,255,0.3)' }}>
                 {periodTitle}
               </h1>
-              <div className="h-px flex-1 max-w-[80px] bg-gradient-to-l from-transparent to-cyan-400/50" />
+              <div className="h-px flex-1 max-w-[100px] bg-gradient-to-l from-transparent to-cyan-400/50" />
             </div>
-            <p className="text-green-400 text-xs sm:text-sm font-bold tracking-[0.3em]">{periodSubtitle}</p>
-            <p className="text-cyan-300/60 text-[10px] font-bold tracking-widest mt-1">
-              {period === 'day' ? fmtDate(rangeStart) : `${fmtDate(rangeStart)} — ${fmtDate(new Date(rangeEnd.getTime() - 86_400_000))}`} · XAUUSD
-            </p>
+            <p className="text-green-400 text-base font-bold tracking-[0.3em]">{periodSubtitle}</p>
+            <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
+              <p className="text-cyan-300/60 text-xs font-bold tracking-widest">
+                {period === 'day' ? fmtDate(rangeStart) : `${fmtDate(rangeStart)} — ${fmtDate(new Date(rangeEnd.getTime() - 86_400_000))}`} · XAUUSD
+              </p>
+              <span className="text-cyan-300/30">·</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[10px] font-black tracking-widest tabular-nums">
+                {weekTrades.length} TRADES
+              </span>
+            </div>
           </div>
 
+          {/* Mini equity path across the period */}
+          {equityPath.length > 1 && (() => {
+            const W = 1000, H = 64;
+            const ys = equityPath.map(p => p.y);
+            const yMin = Math.min(...ys, 0);
+            const yMax = Math.max(...ys, 0);
+            const yRange = (yMax - yMin) || 1;
+            const sx = (i) => (i / (equityPath.length - 1)) * W;
+            const sy = (y) => H - ((y - yMin) / yRange) * (H - 4) - 2;
+            const linePath = equityPath.map((p, i) => `${i === 0 ? 'M' : 'L'} ${sx(i).toFixed(1)} ${sy(p.y).toFixed(1)}`).join(' ');
+            const areaPath = `${linePath} L ${sx(equityPath.length - 1).toFixed(1)} ${H} L 0 ${H} Z`;
+            const zeroY = sy(0);
+            const lineColor = netResult >= 0 ? '#4ade80' : '#f87171';
+            return (
+              <div className="relative z-10 mb-5 px-1">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[9px] font-black text-cyan-300/60 tracking-widest uppercase">Equity Path</p>
+                  <p className="text-[9px] font-black text-cyan-300/60 tracking-widest tabular-nums">
+                    Peak <span className="text-green-400">+${peakWeek.toFixed(0)}</span> · Trough <span className="text-red-400">${troughWeek.toFixed(0)}</span>
+                  </p>
+                </div>
+                <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-14">
+                  <defs>
+                    <linearGradient id={`eq-week-${period}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={lineColor} stopOpacity="0.3" />
+                      <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <line x1="0" y1={zeroY} x2={W} y2={zeroY} stroke="rgba(34,211,238,0.25)" strokeWidth="1" strokeDasharray="4 4" />
+                  <path d={areaPath} fill={`url(#eq-week-${period})`} />
+                  <path d={linePath} fill="none" stroke={lineColor} strokeWidth="2.5" style={{ filter: `drop-shadow(0 0 4px ${lineColor})` }} />
+                  <circle cx={sx(equityPath.length - 1)} cy={sy(equityPath[equityPath.length - 1].y)} r="4" fill={lineColor} stroke="#050b1f" strokeWidth="2" />
+                </svg>
+              </div>
+            );
+          })()}
+
           {/* Top row: Results by Day + Total Result */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 relative z-10">
+          <div className="grid grid-cols-2 gap-4 mb-4 relative z-10">
             {/* Results by Day */}
             <div className="border-2 border-cyan-500/40 rounded-2xl p-4 bg-black/20">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
                   <Activity size={14} className="text-cyan-400" />
                 </div>
-                <h2 className="text-xs sm:text-sm font-black text-white tracking-wider uppercase">{breakdownTitle}</h2>
+                <h2 className="text-sm font-black text-white tracking-wider uppercase">{breakdownTitle}</h2>
               </div>
-              <div className="text-[10px] font-black text-gray-500 tracking-widest grid grid-cols-3 mb-2 pb-2 border-b border-cyan-500/20">
-                <span>{breakdownLabel}</span><span className="text-center">TRADES</span><span className="text-right">RESULT</span>
+              <div className="text-[10px] font-black text-gray-500 tracking-widest grid grid-cols-[60px_60px_1fr_80px] gap-2 mb-2 pb-2 border-b border-cyan-500/20">
+                <span>{breakdownLabel}</span>
+                <span className="text-center">TRADES</span>
+                <span></span>
+                <span className="text-right">RESULT</span>
               </div>
-              {dailyResults.map(d => (
-                <div key={d.name} className="grid grid-cols-3 py-1.5 text-xs font-bold tabular-nums">
-                  <span className="text-gray-300">{d.name}</span>
-                  <span className="text-center text-gray-300">{d.count}</span>
-                  <span className={`text-right ${d.pl > 0 ? 'text-green-400' : d.pl < 0 ? 'text-red-400' : 'text-gray-600'}`}>
-                    {d.count === 0 ? '—' : `${d.pl >= 0 ? '+' : ''}$${d.pl.toFixed(0)}`}
-                  </span>
-                </div>
-              ))}
-              <div className="grid grid-cols-3 pt-2 mt-2 border-t border-cyan-500/30 text-xs font-black tabular-nums">
+              {(() => {
+                const maxAbs = Math.max(1, ...dailyResults.map(d => Math.abs(d.pl)));
+                return dailyResults.map(d => {
+                  const width = (Math.abs(d.pl) / maxAbs) * 100;
+                  return (
+                    <div key={d.name} className="grid grid-cols-[60px_60px_1fr_80px] gap-2 py-1.5 text-xs font-bold tabular-nums items-center">
+                      <span className="text-gray-300">{d.name}</span>
+                      <span className="text-center text-gray-300">{d.count}</span>
+                      <div className="h-1 bg-white/5 rounded-full overflow-hidden relative">
+                        <div className="h-1/2 absolute top-1/2 left-1/2 -translate-y-1/2 origin-left bg-gradient-to-r from-cyan-500/0 via-cyan-500/50 to-transparent" style={{ width: '1px' }} />
+                        {d.pl !== 0 && (
+                          <div
+                            className={`h-full absolute top-0 ${d.pl > 0 ? 'left-1/2 bg-gradient-to-r from-green-500/60 to-green-400' : 'right-1/2 bg-gradient-to-l from-red-500/60 to-red-400'}`}
+                            style={{ width: `${width / 2}%` }}
+                          />
+                        )}
+                      </div>
+                      <span className={`text-right ${d.pl > 0 ? 'text-green-400' : d.pl < 0 ? 'text-red-400' : 'text-gray-600'}`}>
+                        {d.count === 0 ? '—' : `${d.pl >= 0 ? '+' : ''}$${d.pl.toFixed(0)}`}
+                      </span>
+                    </div>
+                  );
+                });
+              })()}
+              <div className="grid grid-cols-[60px_60px_1fr_80px] gap-2 pt-2 mt-2 border-t border-cyan-500/30 text-xs font-black tabular-nums items-center">
                 <span className="text-white">TOTAL</span>
                 <span className="text-center text-white">{weekTrades.length}</span>
+                <span></span>
                 <span className={`text-right ${netResult >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {netResult >= 0 ? '+' : ''}${netResult.toFixed(0)}
                 </span>
@@ -873,14 +987,22 @@ const ReportPage = ({ period = 'week' }) => {
                 <div className="w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center justify-center">
                   <TrendingUp size={14} className="text-green-400" />
                 </div>
-                <h2 className="text-xs sm:text-sm font-black text-white tracking-wider uppercase">Total Result</h2>
+                <h2 className="text-sm font-black text-white tracking-wider uppercase">Total Result</h2>
               </div>
-              <div className="text-center my-3">
-                <p className="text-[10px] font-black text-cyan-300/70 tracking-widest mb-1">NET P/L</p>
-                <p className={`text-4xl sm:text-5xl font-black tabular-nums ${netResult >= 0 ? 'text-green-400' : 'text-red-400'}`} style={{ textShadow: `0 0 20px ${netResult >= 0 ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)'}` }}>
+              <div className="text-center my-3 relative">
+                {/* Glow halo behind the big number */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: `radial-gradient(ellipse 60% 70% at center, ${netResult >= 0 ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)'}, transparent 70%)`,
+                    filter: 'blur(8px)',
+                  }}
+                />
+                <p className="text-[10px] font-black text-cyan-300/70 tracking-widest mb-1 relative">NET P/L</p>
+                <p className={`text-6xl font-black tabular-nums relative ${netResult >= 0 ? 'text-green-400' : 'text-red-400'}`} style={{ textShadow: `0 0 30px ${netResult >= 0 ? 'rgba(74,222,128,0.6)' : 'rgba(248,113,113,0.6)'}, 0 0 60px ${netResult >= 0 ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)'}` }}>
                   {netResult >= 0 ? '+' : '-'}${Math.abs(netResult).toFixed(0)}
                 </p>
-                <p className="text-[10px] font-black text-white tracking-widest">USD</p>
+                <p className="text-[10px] font-black text-white tracking-widest relative">USD</p>
               </div>
               <div className="border-t border-cyan-500/20 pt-2 space-y-1.5 text-xs tabular-nums">
                 <div className="flex justify-between font-bold">
@@ -911,32 +1033,37 @@ const ReportPage = ({ period = 'week' }) => {
               <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
                 <Package size={14} className="text-cyan-400" />
               </div>
-              <h2 className="text-xs sm:text-sm font-black text-white tracking-wider uppercase">All Trades Overview</h2>
+              <h2 className="text-sm font-black text-white tracking-wider uppercase">All Trades Overview</h2>
             </div>
             {weekTrades.length === 0 ? (
               <p className="text-center text-gray-500 text-xs font-bold py-6">No trades closed this week yet</p>
             ) : (
               (() => {
-                const half = Math.ceil(weekTrades.length / 2);
-                const cols = [weekTrades.slice(0, half), weekTrades.slice(half)];
-                const ROW = "grid grid-cols-[14px_1fr_48px_64px] gap-2 items-center";
+                // At 1080px width, 3 columns fits nicely; 4 for very busy weeks.
+                const colCount = weekTrades.length <= 18 ? 3 : 4;
+                const rowsPerCol = Math.ceil(weekTrades.length / colCount);
+                const cols = [];
+                for (let i = 0; i < colCount; i++) {
+                  cols.push(weekTrades.slice(i * rowsPerCol, (i + 1) * rowsPerCol));
+                }
+                const ROW = "grid grid-cols-[16px_1fr_50px_64px] gap-2 items-center";
                 return (
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-0">
+                  <div className="grid gap-x-4 gap-y-0" style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}>
                     {cols.map((col, ci) => (
                       <div key={ci}>
-                        <div className={`${ROW} text-[9px] font-black text-gray-500 tracking-widest pb-1.5 border-b border-cyan-500/20 mb-1`}>
+                        <div className={`${ROW} text-[10px] font-black text-gray-500 tracking-widest pb-1.5 border-b border-cyan-500/20 mb-1`}>
                           <span></span>
                           <span>PAIR</span>
                           <span className="text-center">TYPE</span>
                           <span className="text-right">P/L</span>
                         </div>
                         {col.map((t, i) => (
-                          <div key={i} className={`${ROW} py-1 text-[11px] font-bold tabular-nums`}>
-                            <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] leading-none ${t._r >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                          <div key={i} className={`${ROW} py-1 text-[12px] font-bold tabular-nums`}>
+                            <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] leading-none ${t._r >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                               {t._r >= 0 ? '✓' : '✕'}
                             </span>
                             <span className="text-gray-200 tracking-wider">XAUUSD</span>
-                            <span className={`text-center font-black text-[10px] tracking-wider ${t.direction === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>
+                            <span className={`text-center font-black text-[11px] tracking-wider ${t.direction === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>
                               {t.direction}
                             </span>
                             <span className={`text-right tabular-nums ${t._r >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -952,93 +1079,115 @@ const ReportPage = ({ period = 'week' }) => {
             )}
           </div>
 
-          {/* Bottom row: Performance + Best/Worst + Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
-            {/* Performance */}
-            <div className="border-2 border-cyan-500/40 rounded-2xl p-4 bg-black/20">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center">
-                  <Award size={14} className="text-yellow-400" />
+          {/* Bottom row: compact Performance + Best/Worst + Summary */}
+          <div className="grid grid-cols-3 gap-3 relative z-10">
+            {/* Performance — donut + stats side-by-side */}
+            <div className="border-2 border-cyan-500/40 rounded-2xl p-3 bg-black/20">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded-md bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center">
+                  <Award size={11} className="text-yellow-400" />
                 </div>
-                <h2 className="text-xs font-black text-white tracking-wider uppercase">Performance</h2>
+                <h2 className="text-[11px] font-black text-white tracking-wider uppercase">Performance</h2>
               </div>
-              <div className="space-y-1.5 text-xs font-bold mb-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">WINNING TRADES</span>
-                  <span className="text-green-400 font-black tabular-nums">{wins.length}</span>
-                </div>
-                <div className="flex justify-between pt-1.5 border-t border-cyan-500/20">
-                  <span className="text-gray-400">LOSING TRADES</span>
-                  <span className="text-red-400 font-black tabular-nums">{losses.length}</span>
-                </div>
-              </div>
-              <div className="flex flex-col items-center pt-3 border-t border-cyan-500/20">
-                <p className="text-[10px] font-black text-gray-500 tracking-widest mb-1">WIN RATE</p>
-                <div className="relative">
-                  <svg width="80" height="80" viewBox="0 0 80 80">
-                    <circle cx="40" cy="40" r={radius} fill="none" stroke="rgba(239,68,68,0.3)" strokeWidth="6" />
-                    <circle cx="40" cy="40" r={radius} fill="none" stroke="#4ade80" strokeWidth="6"
+              <div className="flex items-center gap-3">
+                <div className="relative flex-shrink-0">
+                  <svg width="64" height="64" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r={radius} fill="none" stroke="rgba(239,68,68,0.3)" strokeWidth="7" />
+                    <circle cx="40" cy="40" r={radius} fill="none" stroke="#4ade80" strokeWidth="7"
                       strokeDasharray={circ} strokeDashoffset={winOffset} strokeLinecap="round"
-                      transform="rotate(-90 40 40)" style={{ filter: 'drop-shadow(0 0 6px rgba(74,222,128,0.6))' }} />
+                      transform="rotate(-90 40 40)" style={{ filter: 'drop-shadow(0 0 4px rgba(74,222,128,0.6))' }} />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xl font-black text-green-400 tabular-nums">{winRate.toFixed(0)}%</span>
+                    <span className="text-[13px] font-black text-green-400 tabular-nums">{winRate.toFixed(0)}%</span>
+                  </div>
+                </div>
+                <div className="flex-1 space-y-1 text-[10px] font-bold">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">WINS</span>
+                    <span className="text-green-400 font-black tabular-nums">{wins.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">LOSSES</span>
+                    <span className="text-red-400 font-black tabular-nums">{losses.length}</span>
+                  </div>
+                  <div className="flex justify-between pt-1 border-t border-cyan-500/20">
+                    <span className="text-gray-400">TOTAL</span>
+                    <span className="text-white font-black tabular-nums">{weekTrades.length}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Best/Worst Trade */}
-            <div className="border-2 border-cyan-500/40 rounded-2xl p-4 bg-black/20">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center justify-center">
-                  <Sparkles size={14} className="text-green-400" />
+            {/* Best/Worst Trade — tighter spacing, smaller dollar */}
+            <div className="border-2 border-cyan-500/40 rounded-2xl p-3 bg-black/20">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded-md bg-green-500/10 border border-green-500/30 flex items-center justify-center">
+                  <Sparkles size={11} className="text-green-400" />
                 </div>
-                <h2 className="text-xs font-black text-white tracking-wider uppercase">Best Trade</h2>
+                <h2 className="text-[11px] font-black text-white tracking-wider uppercase">Best / Worst</h2>
               </div>
-              <div className="flex items-center justify-between mb-1">
-                <div>
-                  <p className="text-[11px] font-black text-white">XAUUSD <span className={bestTrade?.direction === 'BUY' ? 'text-green-400' : 'text-red-400'}>{bestTrade?.direction || '—'}</span></p>
-                  <p className="text-2xl font-black text-green-400 tabular-nums">
-                    {bestTrade ? `+$${bestTrade._r.toFixed(0)}` : '—'}
-                  </p>
-                </div>
-                <svg width="80" height="32" viewBox="0 0 80 32">
-                  <path d={sparkline(upPts)} fill="none" stroke="#4ade80" strokeWidth="2" />
-                  <defs><linearGradient id="up-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4ade80" stopOpacity="0.4" /><stop offset="100%" stopColor="#4ade80" stopOpacity="0" /></linearGradient></defs>
-                  <path d={`${sparkline(upPts)} L 80 32 L 0 32 Z`} fill="url(#up-fill)" />
-                </svg>
-              </div>
-              <div className="pt-3 mt-3 border-t border-cyan-500/20">
-                <p className="text-[10px] font-black text-red-400/70 tracking-widest mb-1 uppercase">Worst Trade</p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] font-black text-white">XAUUSD <span className={worstTrade?.direction === 'BUY' ? 'text-green-400' : 'text-red-400'}>{worstTrade?.direction || '—'}</span></p>
-                    <p className="text-2xl font-black text-red-400 tabular-nums">
-                      {worstTrade ? `-$${Math.abs(worstTrade._r).toFixed(0)}` : '—'}
-                    </p>
-                  </div>
-                  <svg width="80" height="32" viewBox="0 0 80 32">
-                    <path d={sparkline(downPts)} fill="none" stroke="#f87171" strokeWidth="2" />
-                    <defs><linearGradient id="dn-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f87171" stopOpacity="0.4" /><stop offset="100%" stopColor="#f87171" stopOpacity="0" /></linearGradient></defs>
-                    <path d={`${sparkline(downPts)} L 80 32 L 0 32 Z`} fill="url(#dn-fill)" />
-                  </svg>
-                </div>
-              </div>
+              {(() => {
+                // Real sparkline: equity curve up to the best/worst trade index, highlighting it
+                const W = 90, H = 36;
+                const bestEnd = Math.min(bestTradeIdx + 2, equityPath.length - 1);
+                const bestSlice = equityPath.slice(Math.max(0, bestTradeIdx - 4), bestEnd + 1);
+                const worstEnd = Math.min(worstTradeIdx + 2, equityPath.length - 1);
+                const worstSlice = equityPath.slice(Math.max(0, worstTradeIdx - 4), worstEnd + 1);
+                return (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-black text-green-400/70 tracking-widest uppercase">Best</p>
+                        <p className="text-lg font-black text-green-400 tabular-nums leading-tight" style={{ textShadow: '0 0 8px rgba(74,222,128,0.5)' }}>
+                          {bestTrade ? `+$${bestTrade._r.toFixed(0)}` : '—'}
+                        </p>
+                      </div>
+                      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="flex-shrink-0">
+                        <defs>
+                          <linearGradient id={`up-fill-${period}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#4ade80" stopOpacity="0.5" />
+                            <stop offset="100%" stopColor="#4ade80" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                        <path d={`${pathFromPoints(bestSlice, W, H)} L ${W} ${H} L 0 ${H} Z`} fill={`url(#up-fill-${period})`} />
+                        <path d={pathFromPoints(bestSlice, W, H)} fill="none" stroke="#4ade80" strokeWidth="2" style={{ filter: 'drop-shadow(0 0 3px #4ade80)' }} />
+                      </svg>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 pt-2 mt-2 border-t border-cyan-500/20">
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-black text-red-400/70 tracking-widest uppercase">Worst</p>
+                        <p className="text-lg font-black text-red-400 tabular-nums leading-tight" style={{ textShadow: '0 0 8px rgba(248,113,113,0.5)' }}>
+                          {worstTrade ? `-$${Math.abs(worstTrade._r).toFixed(0)}` : '—'}
+                        </p>
+                      </div>
+                      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="flex-shrink-0">
+                        <defs>
+                          <linearGradient id={`dn-fill-${period}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#f87171" stopOpacity="0.5" />
+                            <stop offset="100%" stopColor="#f87171" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                        <path d={`${pathFromPoints(worstSlice, W, H)} L ${W} ${H} L 0 ${H} Z`} fill={`url(#dn-fill-${period})`} />
+                        <path d={pathFromPoints(worstSlice, W, H)} fill="none" stroke="#f87171" strokeWidth="2" style={{ filter: 'drop-shadow(0 0 3px #f87171)' }} />
+                      </svg>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
-            {/* Summary */}
-            <div className="border-2 border-cyan-500/40 rounded-2xl p-4 bg-black/20">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
-                  <Check size={14} className="text-cyan-400" />
+            {/* Summary — tight bullets */}
+            <div className="border-2 border-cyan-500/40 rounded-2xl p-3 bg-black/20">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded-md bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                  <Check size={11} className="text-cyan-400" />
                 </div>
-                <h2 className="text-xs font-black text-white tracking-wider uppercase">Summary</h2>
+                <h2 className="text-[11px] font-black text-white tracking-wider uppercase">Summary</h2>
               </div>
-              <ul className="space-y-2">
-                {summaryLines.map((line, i) => (
-                  <li key={i} className="flex gap-2 text-[11px] font-bold leading-snug">
-                    <span className="text-green-400 flex-shrink-0 mt-0.5">✓</span>
+              <ul className="space-y-1">
+                {summaryLines.slice(0, 4).map((line, i) => (
+                  <li key={i} className="flex gap-1.5 text-[10px] font-bold leading-tight">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
                     <span className="text-gray-300">{line}</span>
                   </li>
                 ))}
@@ -1049,7 +1198,7 @@ const ReportPage = ({ period = 'week' }) => {
           {/* Footer */}
           <div className="flex items-center justify-center gap-3 mt-6 pt-4 border-t border-cyan-500/20 relative z-10">
             <span className="text-cyan-400 text-xl">🚀</span>
-            <p className="text-center text-xs sm:text-sm font-black tracking-wider">
+            <p className="text-center text-sm font-black tracking-wider">
               <span className="text-white">FOCUS</span>
               <span className="text-cyan-400 mx-2">—</span>
               <span className="text-white">DISCIPLINE</span>
@@ -1059,10 +1208,16 @@ const ReportPage = ({ period = 'week' }) => {
               <span className="text-green-400">SUCCESS</span>
             </p>
           </div>
-          <p className="text-center text-[10px] font-bold text-cyan-300/40 tracking-[0.3em] mt-1 relative z-10">
-            KEEP BUILDING. THE RESULTS WILL FOLLOW!
-          </p>
+          <div className="flex items-center justify-between mt-1 relative z-10 px-1">
+            <p className="text-[10px] font-bold text-cyan-300/40 tracking-[0.3em]">
+              KEEP BUILDING. THE RESULTS WILL FOLLOW!
+            </p>
+            <p className="text-[10px] font-black text-cyan-300/40 tracking-[0.3em]">
+              FLEXBOT.AI
+            </p>
+          </div>
         </div>
+        </div>{/* close horizontal-scroll wrapper */}
 
         {/* Optional: link back */}
         <div className="text-center mt-6">
