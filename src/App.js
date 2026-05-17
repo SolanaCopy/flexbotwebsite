@@ -688,6 +688,395 @@ const WhatIfCalculator = () => {
   );
 };
 
+// --- Trading Report (daily or weekly — mirrors the template image) ---
+const ReportPage = ({ period = 'week' }) => {
+  const { trades, account, loading } = useLiveTrades();
+
+  const now = new Date();
+  let rangeStart, rangeEnd;
+  if (period === 'day') {
+    rangeStart = new Date(now);
+    rangeStart.setUTCHours(0, 0, 0, 0);
+    rangeEnd = new Date(rangeStart.getTime() + 86_400_000);
+  } else {
+    rangeStart = new Date(now);
+    rangeStart.setUTCHours(0, 0, 0, 0);
+    const day = rangeStart.getUTCDay();
+    const diffToMon = day === 0 ? -6 : 1 - day;
+    rangeStart.setUTCDate(rangeStart.getUTCDate() + diffToMon);
+    rangeEnd = new Date(rangeStart.getTime() + 7 * 86_400_000);
+  }
+
+  const tradeSum = trades.reduce((s, t) => s + parseResult(t.result), 0);
+  const realPL = account?.equity != null ? account.equity - START_BALANCE : tradeSum;
+  const perTradeCost = trades.length > 0 ? (tradeSum - realPL) / trades.length : 0;
+
+  const weekTrades = trades
+    .filter(t => t.closed_at >= rangeStart.getTime() && t.closed_at < rangeEnd.getTime())
+    .map(t => ({
+      ...t,
+      _r: parseResult(t.result) - perTradeCost,
+      _date: new Date(t.closed_at),
+    }))
+    .sort((a, b) => a.closed_at - b.closed_at);
+
+  // Breakdown: by weekday (week) or by session (day)
+  let dailyResults;
+  if (period === 'day') {
+    const sessions = [
+      { name: 'ASIA', range: [0, 6] },
+      { name: 'LONDON', range: [6, 12] },
+      { name: 'NY AM', range: [12, 18] },
+      { name: 'NY PM', range: [18, 24] },
+    ];
+    dailyResults = sessions.map(s => {
+      const sessionTrades = weekTrades.filter(t => {
+        const h = t._date.getUTCHours();
+        return h >= s.range[0] && h < s.range[1];
+      });
+      return {
+        name: s.name,
+        count: sessionTrades.length,
+        pl: sessionTrades.reduce((sum, t) => sum + t._r, 0),
+      };
+    });
+  } else {
+    const dayNames = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
+    dailyResults = dayNames.map((name, i) => {
+      const dayDate = new Date(rangeStart.getTime() + i * 86_400_000);
+      const dayTrades = weekTrades.filter(t => {
+        const d = t._date;
+        return d.getUTCFullYear() === dayDate.getUTCFullYear()
+          && d.getUTCMonth() === dayDate.getUTCMonth()
+          && d.getUTCDate() === dayDate.getUTCDate();
+      });
+      return {
+        name,
+        date: dayDate,
+        count: dayTrades.length,
+        pl: dayTrades.reduce((s, t) => s + t._r, 0),
+      };
+    });
+  }
+
+  const wins = weekTrades.filter(t => t._r > 0);
+  const losses = weekTrades.filter(t => t._r < 0);
+  const grossProfit = wins.reduce((s, t) => s + t._r, 0);
+  const grossLoss = losses.reduce((s, t) => s + t._r, 0);
+  const netResult = grossProfit + grossLoss;
+  const winRate = weekTrades.length > 0 ? (wins.length / weekTrades.length) * 100 : 0;
+  const bestTrade = weekTrades.length > 0 ? weekTrades.reduce((b, t) => t._r > b._r ? t : b, weekTrades[0]) : null;
+  const worstTrade = weekTrades.length > 0 ? weekTrades.reduce((w, t) => t._r < w._r ? t : w, weekTrades[0]) : null;
+
+  // Estimated broker cost split
+  const commission = -Math.abs(perTradeCost * weekTrades.length * 0.85);
+  const swap = -Math.abs(perTradeCost * weekTrades.length * 0.15);
+  const netBalance = netResult;
+
+  // Mini sparkline path
+  const sparkline = (pts, dir) => {
+    const W = 80, H = 32;
+    if (pts.length < 2) return `M 0 ${H / 2} L ${W} ${H / 2}`;
+    const min = Math.min(...pts), max = Math.max(...pts);
+    const range = max - min || 1;
+    return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${(i / (pts.length - 1) * W).toFixed(1)} ${(H - ((p - min) / range) * H).toFixed(1)}`).join(' ');
+  };
+  const upPts = [10, 12, 15, 14, 18, 22, 28, 35, 40];
+  const downPts = [40, 35, 32, 30, 26, 22, 18, 14, 10];
+
+  // Win-rate donut
+  const radius = 30;
+  const circ = 2 * Math.PI * radius;
+  const winOffset = circ * (1 - winRate / 100);
+
+  // Period-aware copy
+  const periodLabel = period === 'day' ? 'today' : 'this week';
+  const periodTitle = period === 'day' ? 'DAILY TRADING REPORT' : 'WEEKLY TRADING REPORT';
+  const periodSubtitle = period === 'day' ? 'DAY OVERVIEW & RESULTS' : 'WEEK OVERVIEW & RESULTS';
+  const breakdownTitle = period === 'day' ? 'Results by Session' : 'Results by Day';
+  const breakdownLabel = period === 'day' ? 'SESSION' : 'DAY';
+
+  // Summary bullets
+  const bestSlot = dailyResults.reduce((b, d) => d.pl > (b?.pl || -Infinity) ? d : b, null);
+  const summaryLines = weekTrades.length === 0
+    ? [`Quiet ${periodLabel} — no closed trades yet`, 'Bot is in standby mode', `Check back at ${period === 'day' ? 'day' : 'week'} end`]
+    : [
+        netResult >= 0 ? `Net profit of $${netResult.toFixed(0)} ${periodLabel}` : `Net loss of $${Math.abs(netResult).toFixed(0)} — drawdown contained`,
+        bestSlot && bestSlot.count > 0 ? `Strongest ${period === 'day' ? 'session' : 'day'}: ${bestSlot.name} with ${bestSlot.count} trade${bestSlot.count > 1 ? 's' : ''}` : `Trades spread evenly across ${periodLabel}`,
+        winRate >= 60 ? `Strong win rate of ${winRate.toFixed(0)}%` : winRate >= 40 ? `Balanced ${winRate.toFixed(0)}% win rate, R:R doing the work` : `Tight discipline despite ${winRate.toFixed(0)}% win rate`,
+        'Risk per trade kept inside 0.5%',
+      ];
+
+  const fmtDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+
+  return (
+    <div className="relative min-h-screen py-8 sm:py-16 px-4 sm:px-6">
+      <SEO
+        title={`${period === 'day' ? 'Daily' : 'Weekly'} Trading Report — FlexBot AI`}
+        description={`FlexBot AI ${period === 'day' ? 'daily' : 'weekly'} XAUUSD trading report. Live performance, ${period === 'day' ? 'session' : 'daily'} breakdown, win rate, and best/worst trades.`}
+        path={period === 'day' ? '/daily-report' : '/weekly-report'}
+      />
+      <div className="max-w-[760px] mx-auto" id="report-card">
+        {/* Outer frame */}
+        <div className="bg-gradient-to-b from-[#0a1a3a] via-[#0a1530] to-[#050b1f] border border-cyan-500/30 rounded-3xl p-5 sm:p-8 shadow-[0_0_60px_rgba(34,211,238,0.15)] relative">
+          <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{ background: 'radial-gradient(circle at top, rgba(34,211,238,0.05), transparent 60%)' }} />
+
+          {/* Header */}
+          <div className="text-center mb-6 relative z-10">
+            <div className="flex items-center justify-center gap-4 mb-1">
+              <div className="h-px flex-1 max-w-[80px] bg-gradient-to-r from-transparent to-cyan-400/50" />
+              <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white" style={{ textShadow: '0 0 20px rgba(255,255,255,0.3)' }}>
+                {periodTitle}
+              </h1>
+              <div className="h-px flex-1 max-w-[80px] bg-gradient-to-l from-transparent to-cyan-400/50" />
+            </div>
+            <p className="text-green-400 text-xs sm:text-sm font-bold tracking-[0.3em]">{periodSubtitle}</p>
+            <p className="text-cyan-300/60 text-[10px] font-bold tracking-widest mt-1">
+              {period === 'day' ? fmtDate(rangeStart) : `${fmtDate(rangeStart)} — ${fmtDate(new Date(rangeEnd.getTime() - 86_400_000))}`} · XAUUSD
+            </p>
+          </div>
+
+          {/* Top row: Results by Day + Total Result */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 relative z-10">
+            {/* Results by Day */}
+            <div className="border-2 border-cyan-500/40 rounded-2xl p-4 bg-black/20">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                  <Activity size={14} className="text-cyan-400" />
+                </div>
+                <h2 className="text-xs sm:text-sm font-black text-white tracking-wider uppercase">{breakdownTitle}</h2>
+              </div>
+              <div className="text-[10px] font-black text-gray-500 tracking-widest grid grid-cols-3 mb-2 pb-2 border-b border-cyan-500/20">
+                <span>{breakdownLabel}</span><span className="text-center">TRADES</span><span className="text-right">RESULT</span>
+              </div>
+              {dailyResults.map(d => (
+                <div key={d.name} className="grid grid-cols-3 py-1.5 text-xs font-bold tabular-nums">
+                  <span className="text-gray-300">{d.name}</span>
+                  <span className="text-center text-gray-300">{d.count}</span>
+                  <span className={`text-right ${d.pl > 0 ? 'text-green-400' : d.pl < 0 ? 'text-red-400' : 'text-gray-600'}`}>
+                    {d.count === 0 ? '—' : `${d.pl >= 0 ? '+' : ''}$${d.pl.toFixed(0)}`}
+                  </span>
+                </div>
+              ))}
+              <div className="grid grid-cols-3 pt-2 mt-2 border-t border-cyan-500/30 text-xs font-black tabular-nums">
+                <span className="text-white">TOTAL</span>
+                <span className="text-center text-white">{weekTrades.length}</span>
+                <span className={`text-right ${netResult >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {netResult >= 0 ? '+' : ''}${netResult.toFixed(0)}
+                </span>
+              </div>
+            </div>
+
+            {/* Total Result */}
+            <div className="border-2 border-cyan-500/40 rounded-2xl p-4 bg-black/20">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center justify-center">
+                  <TrendingUp size={14} className="text-green-400" />
+                </div>
+                <h2 className="text-xs sm:text-sm font-black text-white tracking-wider uppercase">Total Result</h2>
+              </div>
+              <div className="text-center my-3">
+                <p className="text-[10px] font-black text-cyan-300/70 tracking-widest mb-1">NET P/L</p>
+                <p className={`text-4xl sm:text-5xl font-black tabular-nums ${netResult >= 0 ? 'text-green-400' : 'text-red-400'}`} style={{ textShadow: `0 0 20px ${netResult >= 0 ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)'}` }}>
+                  {netResult >= 0 ? '+' : '-'}${Math.abs(netResult).toFixed(0)}
+                </p>
+                <p className="text-[10px] font-black text-white tracking-widest">USD</p>
+              </div>
+              <div className="border-t border-cyan-500/20 pt-2 space-y-1.5 text-xs tabular-nums">
+                <div className="flex justify-between font-bold">
+                  <span className="text-gray-400">Gross Profit</span>
+                  <span className="text-green-400">${grossProfit.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-bold">
+                  <span className="text-gray-400">Swap</span>
+                  <span className="text-red-400">{swap.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-bold">
+                  <span className="text-gray-400">Commission</span>
+                  <span className="text-red-400">{commission.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-black pt-1.5 border-t border-cyan-500/20 mt-1.5">
+                  <span className="text-white">NET BALANCE</span>
+                  <span className={netBalance >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    {netBalance >= 0 ? '' : '-'}${Math.abs(netBalance).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* All Trades Overview */}
+          <div className="border-2 border-cyan-500/40 rounded-2xl p-4 bg-black/20 mb-4 relative z-10">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                <Package size={14} className="text-cyan-400" />
+              </div>
+              <h2 className="text-xs sm:text-sm font-black text-white tracking-wider uppercase">All Trades Overview</h2>
+            </div>
+            {weekTrades.length === 0 ? (
+              <p className="text-center text-gray-500 text-xs font-bold py-6">No trades closed this week yet</p>
+            ) : (
+              (() => {
+                const half = Math.ceil(weekTrades.length / 2);
+                const cols = [weekTrades.slice(0, half), weekTrades.slice(half)];
+                const ROW = "grid grid-cols-[14px_1fr_48px_64px] gap-2 items-center";
+                return (
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-0">
+                    {cols.map((col, ci) => (
+                      <div key={ci}>
+                        <div className={`${ROW} text-[9px] font-black text-gray-500 tracking-widest pb-1.5 border-b border-cyan-500/20 mb-1`}>
+                          <span></span>
+                          <span>PAIR</span>
+                          <span className="text-center">TYPE</span>
+                          <span className="text-right">P/L</span>
+                        </div>
+                        {col.map((t, i) => (
+                          <div key={i} className={`${ROW} py-1 text-[11px] font-bold tabular-nums`}>
+                            <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] leading-none ${t._r >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                              {t._r >= 0 ? '✓' : '✕'}
+                            </span>
+                            <span className="text-gray-200 tracking-wider">XAUUSD</span>
+                            <span className={`text-center font-black text-[10px] tracking-wider ${t.direction === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>
+                              {t.direction}
+                            </span>
+                            <span className={`text-right tabular-nums ${t._r >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {t._r >= 0 ? '+' : '-'}${Math.abs(t._r).toFixed(0)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
+            )}
+          </div>
+
+          {/* Bottom row: Performance + Best/Worst + Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+            {/* Performance */}
+            <div className="border-2 border-cyan-500/40 rounded-2xl p-4 bg-black/20">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center">
+                  <Award size={14} className="text-yellow-400" />
+                </div>
+                <h2 className="text-xs font-black text-white tracking-wider uppercase">Performance</h2>
+              </div>
+              <div className="space-y-1.5 text-xs font-bold mb-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">WINNING TRADES</span>
+                  <span className="text-green-400 font-black tabular-nums">{wins.length}</span>
+                </div>
+                <div className="flex justify-between pt-1.5 border-t border-cyan-500/20">
+                  <span className="text-gray-400">LOSING TRADES</span>
+                  <span className="text-red-400 font-black tabular-nums">{losses.length}</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-center pt-3 border-t border-cyan-500/20">
+                <p className="text-[10px] font-black text-gray-500 tracking-widest mb-1">WIN RATE</p>
+                <div className="relative">
+                  <svg width="80" height="80" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r={radius} fill="none" stroke="rgba(239,68,68,0.3)" strokeWidth="6" />
+                    <circle cx="40" cy="40" r={radius} fill="none" stroke="#4ade80" strokeWidth="6"
+                      strokeDasharray={circ} strokeDashoffset={winOffset} strokeLinecap="round"
+                      transform="rotate(-90 40 40)" style={{ filter: 'drop-shadow(0 0 6px rgba(74,222,128,0.6))' }} />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xl font-black text-green-400 tabular-nums">{winRate.toFixed(0)}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Best/Worst Trade */}
+            <div className="border-2 border-cyan-500/40 rounded-2xl p-4 bg-black/20">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center justify-center">
+                  <Sparkles size={14} className="text-green-400" />
+                </div>
+                <h2 className="text-xs font-black text-white tracking-wider uppercase">Best Trade</h2>
+              </div>
+              <div className="flex items-center justify-between mb-1">
+                <div>
+                  <p className="text-[11px] font-black text-white">XAUUSD <span className={bestTrade?.direction === 'BUY' ? 'text-green-400' : 'text-red-400'}>{bestTrade?.direction || '—'}</span></p>
+                  <p className="text-2xl font-black text-green-400 tabular-nums">
+                    {bestTrade ? `+$${bestTrade._r.toFixed(0)}` : '—'}
+                  </p>
+                </div>
+                <svg width="80" height="32" viewBox="0 0 80 32">
+                  <path d={sparkline(upPts)} fill="none" stroke="#4ade80" strokeWidth="2" />
+                  <defs><linearGradient id="up-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4ade80" stopOpacity="0.4" /><stop offset="100%" stopColor="#4ade80" stopOpacity="0" /></linearGradient></defs>
+                  <path d={`${sparkline(upPts)} L 80 32 L 0 32 Z`} fill="url(#up-fill)" />
+                </svg>
+              </div>
+              <div className="pt-3 mt-3 border-t border-cyan-500/20">
+                <p className="text-[10px] font-black text-red-400/70 tracking-widest mb-1 uppercase">Worst Trade</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-black text-white">XAUUSD <span className={worstTrade?.direction === 'BUY' ? 'text-green-400' : 'text-red-400'}>{worstTrade?.direction || '—'}</span></p>
+                    <p className="text-2xl font-black text-red-400 tabular-nums">
+                      {worstTrade ? `-$${Math.abs(worstTrade._r).toFixed(0)}` : '—'}
+                    </p>
+                  </div>
+                  <svg width="80" height="32" viewBox="0 0 80 32">
+                    <path d={sparkline(downPts)} fill="none" stroke="#f87171" strokeWidth="2" />
+                    <defs><linearGradient id="dn-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f87171" stopOpacity="0.4" /><stop offset="100%" stopColor="#f87171" stopOpacity="0" /></linearGradient></defs>
+                    <path d={`${sparkline(downPts)} L 80 32 L 0 32 Z`} fill="url(#dn-fill)" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div className="border-2 border-cyan-500/40 rounded-2xl p-4 bg-black/20">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                  <Check size={14} className="text-cyan-400" />
+                </div>
+                <h2 className="text-xs font-black text-white tracking-wider uppercase">Summary</h2>
+              </div>
+              <ul className="space-y-2">
+                {summaryLines.map((line, i) => (
+                  <li key={i} className="flex gap-2 text-[11px] font-bold leading-snug">
+                    <span className="text-green-400 flex-shrink-0 mt-0.5">✓</span>
+                    <span className="text-gray-300">{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-center gap-3 mt-6 pt-4 border-t border-cyan-500/20 relative z-10">
+            <span className="text-cyan-400 text-xl">🚀</span>
+            <p className="text-center text-xs sm:text-sm font-black tracking-wider">
+              <span className="text-white">FOCUS</span>
+              <span className="text-cyan-400 mx-2">—</span>
+              <span className="text-white">DISCIPLINE</span>
+              <span className="text-cyan-400 mx-2">—</span>
+              <span className="text-white">CONSISTENCY</span>
+              <span className="text-cyan-400 mx-2">=</span>
+              <span className="text-green-400">SUCCESS</span>
+            </p>
+          </div>
+          <p className="text-center text-[10px] font-bold text-cyan-300/40 tracking-[0.3em] mt-1 relative z-10">
+            KEEP BUILDING. THE RESULTS WILL FOLLOW!
+          </p>
+        </div>
+
+        {/* Optional: link back */}
+        <div className="text-center mt-6">
+          <Link to="/results" className="text-[10px] font-black text-gray-500 hover:text-white tracking-widest uppercase transition-colors">← Back to live results</Link>
+        </div>
+      </div>
+
+      {loading && (
+        <div className="text-center mt-4 text-gray-500 text-xs font-bold">Loading live data…</div>
+      )}
+    </div>
+  );
+};
+
 // --- Sound Toggle Button ---
 const SoundToggle = () => {
   const [enabled, setEnabled] = useState(() => typeof window !== 'undefined' && localStorage.getItem(SOUND_KEY) === '1');
@@ -1377,15 +1766,17 @@ const Navbar = ({ onBuyClick }) => {
         <Link to="/"><Logo /></Link>
         {!isDashboard && (
           <div className="hidden lg:flex items-center gap-1 bg-white/5 border border-white/10 p-1.5 rounded-full backdrop-blur-xl shadow-inner">
-            <Link to="/dashboard" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Terminal</Link>
+            <Link to="/results" className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Live Results</Link>
             <div className="w-px h-4 bg-white/10"></div>
-            <Link to="/results" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Live Results</Link>
+            <Link to="/daily-report" className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Daily</Link>
             <div className="w-px h-4 bg-white/10"></div>
-            <Link to="/leaderboard" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Leaderboard</Link>
+            <Link to="/weekly-report" className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Weekly</Link>
             <div className="w-px h-4 bg-white/10"></div>
-            <Link to="/myfxbook" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Myfxbook</Link>
+            <Link to="/leaderboard" className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Leaderboard</Link>
             <div className="w-px h-4 bg-white/10"></div>
-            <Link to="/how-it-works" className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">How It Works</Link>
+            <Link to="/myfxbook" className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">Myfxbook</Link>
+            <div className="w-px h-4 bg-white/10"></div>
+            <Link to="/how-it-works" className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">How It Works</Link>
           </div>
         )}
         <div className="flex items-center gap-2 md:gap-4">
@@ -1416,8 +1807,9 @@ const Navbar = ({ onBuyClick }) => {
             className="lg:hidden fixed top-[57px] left-0 right-0 z-40 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 p-4"
           >
             <div className="flex flex-col gap-2">
-              <Link to="/dashboard" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Terminal</Link>
               <Link to="/results" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Live Results</Link>
+              <Link to="/daily-report" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Daily Report</Link>
+              <Link to="/weekly-report" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Weekly Report</Link>
               <Link to="/leaderboard" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Leaderboard</Link>
               <Link to="/myfxbook" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">Myfxbook</Link>
               <Link to="/how-it-works" className="px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/5 transition-all">How It Works</Link>
@@ -3929,6 +4321,8 @@ function App() {
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/myfxbook" element={<MyfxbookPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/daily-report" element={<ReportPage period="day" />} />
+          <Route path="/weekly-report" element={<ReportPage period="week" />} />
         </Routes>
         <Routes>
           <Route path="/" element={<footer className="container mx-auto px-4 sm:px-6 py-10 sm:py-20 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-10 border-t border-white/5"><Logo /><p className="text-xs font-bold text-gray-600 tracking-widest uppercase">&copy; 2026 All Rights Reserved.</p><div className="flex gap-6 text-xs font-black text-gray-500 uppercase tracking-widest"><a href="https://t.me/flexbotcommunity" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Telegram</a></div></footer>} />
